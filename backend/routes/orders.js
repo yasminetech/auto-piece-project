@@ -21,7 +21,7 @@ router.post('/', [verifyToken], (req, res) => {
         product.quantity -= item.quantity;
         
         store.movements.push({
-            id: (store.movements.length + 1).toString(),
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
             productId: item.productId,
             type: 'exit',
             quantity: item.quantity,
@@ -31,7 +31,7 @@ router.post('/', [verifyToken], (req, res) => {
     });
 
     const newOrder = {
-        id: (store.orders.length + 1).toString(),
+        id: Date.now().toString(),
         userId: req.userId,
         items,
         paymentMethod,
@@ -51,7 +51,14 @@ router.get('/', [verifyToken], (req, res) => {
 
 // Get all orders (Admin only)
 router.get('/all', [verifyToken, isAdmin], (req, res) => {
-    res.json(store.orders);
+    const ordersWithUsers = store.orders.map(order => {
+        const user = store.users.find(u => u.id === order.userId);
+        return {
+            ...order,
+            username: user ? user.username : 'Unknown User'
+        };
+    });
+    res.json(ordersWithUsers);
 });
 
 // Update order status (Admin only)

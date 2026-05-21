@@ -10,10 +10,15 @@ router.get('/movements', [verifyToken, isAdmin], (req, res) => {
 
 // Manual stock adjustment (Admin only)
 router.post('/adjust', [verifyToken, isAdmin], (req, res) => {
-    const { productId, quantity, type, description } = req.body; // type: 'entry' or 'exit'
+    let { productId, quantity, type, description } = req.body; // type: 'entry' or 'exit'
     const product = store.products.find(p => p.id === productId);
     
     if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    quantity = Number(quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+        return res.status(400).json({ message: 'Invalid quantity' });
+    }
 
     if (type === 'entry') {
         product.quantity += quantity;
@@ -27,7 +32,7 @@ router.post('/adjust', [verifyToken, isAdmin], (req, res) => {
     }
 
     const movement = {
-        id: (store.movements.length + 1).toString(),
+        id: Date.now().toString(),
         productId,
         type,
         quantity,

@@ -8,23 +8,25 @@ const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
 // Register
 router.post('/register', async (req, res) => {
-    const { username, password, role } = req.body;
+    const { username, password, email, phone } = req.body;
     
-    if (!username || !password) {
-        return res.status(400).json({ message: 'Username and password are required' });
+    if (!email || !password || !username) {
+        return res.status(400).json({ message: 'Email, username and password are required' });
     }
 
-    const userExists = store.users.find(u => u.username === username);
+    const userExists = store.users.find(u => u.email === email);
     if (userExists) {
-        return res.status(400).json({ message: 'User already exists' });
+        return res.status(400).json({ message: 'User with this email already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 8);
     const newUser = {
-        id: (store.users.length + 1).toString(),
+        id: Date.now().toString(),
         username,
+        email,
+        phone: phone || '',
         password: hashedPassword,
-        role: role || 'user'
+        role: 'user' // Force role to user for public registration
     };
 
     store.users.push(newUser);
@@ -33,9 +35,9 @@ router.post('/register', async (req, res) => {
 
 // Login
 router.post('/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { email, password } = req.body;
 
-    const user = store.users.find(u => u.username === username);
+    const user = store.users.find(u => u.email === email);
     if (!user) {
         return res.status(404).json({ message: 'User not found' });
     }

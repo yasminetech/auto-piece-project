@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-import { cancelOrder, createOrder, getOrders, getProducts, login, register } from './api';
+import { cancelOrder, createOrder, getOrders, getProducts, login, register, getAllOrders, getStats } from './api';
 import type { CartItem, Order, Product, User } from './types';
 
 const storedUser = localStorage.getItem('auto-piece-user');
@@ -27,12 +27,17 @@ export default function App() {
   const [user, setUser] = useState<User | null>(initialUser);
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [adminOrders, setAdminOrders] = useState<(Order & { username: string })[]>([]);
+  const [stats, setStats] = useState<{ totalProducts: number; outOfStock: number; totalOrders: number } | null>(null);
+  const [view, setView] = useState<'user' | 'admin'>('user');
   const [cart, setCart] = useState<CartItem[]>([]);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState('');
@@ -60,12 +65,21 @@ export default function App() {
   useEffect(() => {
     if (user) {
       localStorage.setItem('auto-piece-user', JSON.stringify(user));
-      loadOrders(user.accessToken);
+      if (user.role === 'admin') {
+        setView('admin');
+        loadAdminData(user.accessToken);
+      } else {
+        setView('user');
+        loadOrders(user.accessToken);
+      }
       return;
     }
 
     localStorage.removeItem('auto-piece-user');
     setOrders([]);
+    setAdminOrders([]);
+    setStats(null);
+    setView('user');
   }, [user]);
 
   async function loadProducts() {
@@ -87,6 +101,19 @@ export default function App() {
     }
   }
 
+  async function loadAdminData(token: string) {
+    try {
+      const [ordersData, statsData] = await Promise.all([
+        getAllOrders(token),
+        getStats(token)
+      ]);
+      setAdminOrders(ordersData);
+      setStats(statsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Impossible de charger les donnees admin');
+    }
+  }
+
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -95,15 +122,18 @@ export default function App() {
 
     try {
       if (authMode === 'register') {
-        await register(username, password);
+        await register(username, password, email, phone);
         setNotice('Compte cree. Vous pouvez vous connecter.');
         setAuthMode('login');
       } else {
-        const loggedUser = await login(username, password);
+        const loggedUser = await login(email, password);
         setUser(loggedUser);
         setNotice(`Bienvenue ${loggedUser.username}`);
       }
       setPassword('');
+      setEmail('');
+      setPhone('');
+      setUsername('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentification impossible');
     } finally {
@@ -168,7 +198,11 @@ export default function App() {
       setCart([]);
       setNotice('Commande envoyee.');
       await loadProducts();
-      await loadOrders(user.accessToken);
+      if (user.role === 'admin') {
+        await loadAdminData(user.accessToken);
+      } else {
+        await loadOrders(user.accessToken);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Commande impossible');
     } finally {
@@ -187,7 +221,11 @@ export default function App() {
       await cancelOrder(user.accessToken, orderId);
       setNotice('Commande annulee.');
       await loadProducts();
-      await loadOrders(user.accessToken);
+      if (user.role === 'admin') {
+        await loadAdminData(user.accessToken);
+      } else {
+        await loadOrders(user.accessToken);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Annulation impossible');
     } finally {
@@ -200,25 +238,35 @@ export default function App() {
       <header className="topbar">
         <div>
           <span className="brand-kicker">Auto Piece</span>
-          <h1>Espace utilisateur</h1>
+          <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
         </div>
-        {user ? (
-          <div className="user-box">
-            <span>{user.username}</span>
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={() => {
-                setUser(null);
-                setCart([]);
-              }}
+        <div className="topbar-actions">
+          {user?.role === 'admin' && (
+            <button 
+              className={`ghost-button ${view === 'admin' ? 'active' : ''}`}
+              onClick={() => setView(view === 'admin' ? 'user' : 'admin')}
             >
-              Deconnexion
+              {view === 'admin' ? 'Voir Boutique' : 'Voir Admin'}
             </button>
-          </div>
-        ) : (
-          <span className="session-state">Invite</span>
-        )}
+          )}
+          {user ? (
+            <div className="user-box">
+              <span>{user.username} ({user.role})</span>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => {
+                  setUser(null);
+                  setCart([]);
+                }}
+              >
+                Deconnexion
+              </button>
+            </div>
+          ) : (
+            <span className="session-state">Invite</span>
+          )}
+        </div>
       </header>
 
       {(notice || error) && (
@@ -227,181 +275,259 @@ export default function App() {
         </section>
       )}
 
-      <section className="layout">
-        <div className="main-column">
-          <section className="toolbar" aria-label="Recherche produits">
-            <label>
-              Recherche
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Nom ou description"
-              />
-            </label>
-            <label>
-              Categorie
-              <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                <option value="">Toutes</option>
-                {categories.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </section>
+      {view === 'admin' && user?.role === 'admin' ? (
+        <section className="layout admin-layout">
+          <div className="main-column">
+            <section className="stats-grid">
+              <div className="stat-card">
+                <h3>Produits</h3>
+                <p>{stats?.totalProducts || 0}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Rupture de stock</h3>
+                <p className={stats?.outOfStock ? 'danger' : ''}>{stats?.outOfStock || 0}</p>
+              </div>
+              <div className="stat-card">
+                <h3>Commandes totales</h3>
+                <p>{stats?.totalOrders || 0}</p>
+              </div>
+            </section>
 
-          <section className="product-grid" aria-label="Catalogue">
-            {products.map((product) => (
-              <article className="product-card" key={product.id}>
-                <div className="part-visual">
-                  <span>{product.category.slice(0, 2).toUpperCase()}</span>
-                </div>
-                <div className="product-content">
-                  <div>
-                    <span className="category-pill">{product.category}</span>
-                    <h2>{product.name}</h2>
-                    <p>{product.description}</p>
-                  </div>
-                  <div className="product-meta">
-                    <strong>{formatPrice(product.price)}</strong>
-                    <span className={product.quantity > 0 ? 'stock' : 'stock empty'}>
-                      {product.quantity > 0 ? `${product.quantity} en stock` : 'Rupture'}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    disabled={product.quantity <= 0}
-                    onClick={() => addToCart(product)}
-                  >
-                    Ajouter
-                  </button>
-                </div>
-              </article>
-            ))}
-            {products.length === 0 && <p className="empty-state">Aucun produit trouve.</p>}
-          </section>
-
-          <section className="orders-section">
-            <div className="section-title">
-              <h2>Mes commandes</h2>
-              {user && (
-                <button type="button" className="ghost-button" onClick={() => loadOrders(user.accessToken)}>
+            <section className="orders-section">
+              <div className="section-title">
+                <h2>Toutes les commandes</h2>
+                <button type="button" className="ghost-button" onClick={() => loadAdminData(user.accessToken)}>
                   Actualiser
                 </button>
-              )}
+              </div>
+              {adminOrders.length === 0 && <p className="empty-state">Aucune commande.</p>}
+              {adminOrders.map((order) => (
+                <article className="order-row" key={order.id}>
+                  <div>
+                    <strong>Commande #{order.id}</strong>
+                    <span>Par: {order.username}</span>
+                    <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="order-items">
+                    {order.items.map((item) => {
+                      const product = productById.get(item.productId);
+                      return (
+                        <span key={`${order.id}-${item.productId}`}>
+                          {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
+                </article>
+              ))}
+            </section>
+          </div>
+          <aside className="side-column">
+            <div className="admin-actions-panel">
+              <h2>Actions Rapides</h2>
+              <p>Gestion des produits et stocks (Prochainement)</p>
+              <button disabled className="ghost-button">Ajouter un produit</button>
+              <button disabled className="ghost-button">Gérer les fournisseurs</button>
             </div>
-            {!user && <p className="empty-state">Connectez-vous pour suivre vos commandes.</p>}
-            {user && orders.length === 0 && <p className="empty-state">Aucune commande pour le moment.</p>}
-            {orders.map((order) => (
-              <article className="order-row" key={order.id}>
-                <div>
-                  <strong>Commande #{order.id}</strong>
-                  <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
-                </div>
-                <div className="order-items">
-                  {order.items.map((item) => {
-                    const product = productById.get(item.productId);
-                    return (
-                      <span key={`${order.id}-${item.productId}`}>
-                        {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+          </aside>
+        </section>
+      ) : (
+        <section className="layout">
+          <div className="main-column">
+            <section className="toolbar" aria-label="Recherche produits">
+              <label>
+                Recherche
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Nom ou description"
+                />
+              </label>
+              <label>
+                Categorie
+                <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                  <option value="">Toutes</option>
+                  {categories.map((item) => (
+                    <option key={item} value={item}>
+                      {item}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </section>
+
+            <section className="product-grid" aria-label="Catalogue">
+              {products.map((product) => (
+                <article className="product-card" key={product.id}>
+                  <div className="part-visual">
+                    <span>{product.category.slice(0, 2).toUpperCase()}</span>
+                  </div>
+                  <div className="product-content">
+                    <div>
+                      <span className="category-pill">{product.category}</span>
+                      <h2>{product.name}</h2>
+                      <p>{product.description}</p>
+                    </div>
+                    <div className="product-meta">
+                      <strong>{formatPrice(product.price)}</strong>
+                      <span className={product.quantity > 0 ? 'stock' : 'stock empty'}>
+                        {product.quantity > 0 ? `${product.quantity} en stock` : 'Rupture'}
                       </span>
-                    );
-                  })}
-                </div>
-                <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
-                {order.status !== 'cancelled' && (
-                  <button type="button" className="ghost-button danger" onClick={() => handleCancel(order.id)}>
-                    Annuler
+                    </div>
+                    <button
+                      type="button"
+                      disabled={product.quantity <= 0}
+                      onClick={() => addToCart(product)}
+                    >
+                      Ajouter
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {products.length === 0 && <p className="empty-state">Aucun produit trouve.</p>}
+            </section>
+
+            <section className="orders-section">
+              <div className="section-title">
+                <h2>Mes commandes</h2>
+                {user && (
+                  <button type="button" className="ghost-button" onClick={() => loadOrders(user.accessToken)}>
+                    Actualiser
                   </button>
                 )}
-              </article>
-            ))}
-          </section>
-        </div>
-
-        <aside className="side-column">
-          <section className="auth-panel">
-            <div className="tabs">
-              <button
-                className={authMode === 'login' ? 'active' : ''}
-                type="button"
-                onClick={() => setAuthMode('login')}
-              >
-                Connexion
-              </button>
-              <button
-                className={authMode === 'register' ? 'active' : ''}
-                type="button"
-                onClick={() => setAuthMode('register')}
-              >
-                Inscription
-              </button>
-            </div>
-            <form onSubmit={handleAuth}>
-              <label>
-                Utilisateur
-                <input value={username} onChange={(event) => setUsername(event.target.value)} required />
-              </label>
-              <label>
-                Mot de passe
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  minLength={4}
-                  required
-                />
-              </label>
-              <button type="submit" disabled={loading}>
-                {authMode === 'login' ? 'Se connecter' : 'Creer le compte'}
-              </button>
-            </form>
-          </section>
-
-          <section className="cart-panel">
-            <div className="section-title">
-              <h2>Panier</h2>
-              <span>{cart.length}</span>
-            </div>
-            {cart.length === 0 && <p className="empty-state">Votre panier est vide.</p>}
-            {cart.map((item) => (
-              <div className="cart-line" key={item.product.id}>
-                <div>
-                  <strong>{item.product.name}</strong>
-                  <span>{formatPrice(item.product.price)}</span>
-                </div>
-                <input
-                  aria-label={`Quantite ${item.product.name}`}
-                  type="number"
-                  min="1"
-                  max={item.product.quantity}
-                  value={item.quantity}
-                  onChange={(event) => updateCart(item.product.id, Number(event.target.value))}
-                />
-                <button type="button" className="icon-button" onClick={() => updateCart(item.product.id, 0)}>
-                  x
-                </button>
               </div>
-            ))}
-            <label>
-              Paiement
-              <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
-                <option value="cash">Paiement a la livraison</option>
-                <option value="card">Carte bancaire</option>
-                <option value="transfer">Virement</option>
-              </select>
-            </label>
-            <div className="total-line">
-              <span>Total</span>
-              <strong>{formatPrice(cartTotal)}</strong>
-            </div>
-            <button type="button" disabled={loading || cart.length === 0} onClick={submitOrder}>
-              Valider la commande
-            </button>
-          </section>
-        </aside>
-      </section>
+              {!user && <p className="empty-state">Connectez-vous pour suivre vos commandes.</p>}
+              {user && orders.length === 0 && <p className="empty-state">Aucune commande pour le moment.</p>}
+              {orders.map((order) => (
+                <article className="order-row" key={order.id}>
+                  <div>
+                    <strong>Commande #{order.id}</strong>
+                    <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <div className="order-items">
+                    {order.items.map((item) => {
+                      const product = productById.get(item.productId);
+                      return (
+                        <span key={`${order.id}-${item.productId}`}>
+                          {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+                        </span>
+                      );
+                    })}
+                  </div>
+                  <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
+                  {order.status !== 'cancelled' && (
+                    <button type="button" className="ghost-button danger" onClick={() => handleCancel(order.id)}>
+                      Annuler
+                    </button>
+                  )}
+                </article>
+              ))}
+            </section>
+          </div>
+
+          <aside className="side-column">
+            {!user && (
+              <section className="auth-panel">
+                <div className="tabs">
+                  <button
+                    className={authMode === 'login' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setAuthMode('login')}
+                  >
+                    Connexion
+                  </button>
+                  <button
+                    className={authMode === 'register' ? 'active' : ''}
+                    type="button"
+                    onClick={() => setAuthMode('register')}
+                  >
+                    Inscription
+                  </button>
+                </div>
+                <form onSubmit={handleAuth}>
+                  {authMode === 'login' ? (
+                    <label>
+                      Email
+                      <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                    </label>
+                  ) : (
+                    <>
+                      <label>
+                        Utilisateur
+                        <input value={username} onChange={(event) => setUsername(event.target.value)} required />
+                      </label>
+                      <label>
+                        Email
+                        <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                      </label>
+                      <label>
+                        Telephone
+                        <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required />
+                      </label>
+                    </>
+                  )}
+                  <label>
+                    Mot de passe
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      minLength={4}
+                      required
+                    />
+                  </label>
+                  <button type="submit" disabled={loading}>
+                    {authMode === 'login' ? 'Se connecter' : 'Creer le compte'}
+                  </button>
+                </form>
+              </section>
+            )}
+
+            <section className="cart-panel">
+              <div className="section-title">
+                <h2>Panier</h2>
+                <span>{cart.length}</span>
+              </div>
+              {cart.length === 0 && <p className="empty-state">Votre panier est vide.</p>}
+              {cart.map((item) => (
+                <div className="cart-line" key={item.product.id}>
+                  <div>
+                    <strong>{item.product.name}</strong>
+                    <span>{formatPrice(item.product.price)}</span>
+                  </div>
+                  <input
+                    aria-label={`Quantite ${item.product.name}`}
+                    type="number"
+                    min="1"
+                    max={item.product.quantity}
+                    value={item.quantity}
+                    onChange={(event) => updateCart(item.product.id, Number(event.target.value))}
+                  />
+                  <button type="button" className="icon-button" onClick={() => updateCart(item.product.id, 0)}>
+                    x
+                  </button>
+                </div>
+              ))}
+              <label>
+                Paiement
+                <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+                  <option value="cash">Paiement a la livraison</option>
+                  <option value="card">Carte bancaire</option>
+                  <option value="transfer">Virement</option>
+                </select>
+              </label>
+              <div className="total-line">
+                <span>Total</span>
+                <strong>{formatPrice(cartTotal)}</strong>
+              </div>
+              <button type="button" disabled={loading || cart.length === 0} onClick={submitOrder}>
+                Valider la commande
+              </button>
+            </section>
+          </aside>
+        </section>
+      )}
     </main>
   );
 }

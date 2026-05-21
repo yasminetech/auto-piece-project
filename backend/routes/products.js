@@ -32,12 +32,17 @@ router.get('/:id', (req, res) => {
 // Create product (Admin only)
 router.post('/', [verifyToken, isAdmin], (req, res) => {
     const { name, description, price, quantity, supplierId, category } = req.body;
+    
+    if (!name || price === undefined || quantity === undefined) {
+        return res.status(400).json({ message: 'Name, price and quantity are required' });
+    }
+
     const newProduct = {
-        id: (store.products.length + 1).toString(),
+        id: Date.now().toString(),
         name,
         description,
-        price,
-        quantity,
+        price: Number(price),
+        quantity: Number(quantity),
         supplierId,
         category
     };
@@ -48,7 +53,7 @@ router.post('/', [verifyToken, isAdmin], (req, res) => {
         id: (store.movements.length + 1).toString(),
         productId: newProduct.id,
         type: 'entry',
-        quantity,
+        quantity: Number(quantity),
         date: new Date().toISOString(),
         description: 'New product added'
     });
