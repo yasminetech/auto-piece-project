@@ -14,6 +14,7 @@ router.get('/', [verifyToken], async (req, res) => {
 });
 
 // Create supplier (Admin only)
+<<<<<<< HEAD
 router.post('/', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { name, contact } = req.body;
@@ -25,6 +26,19 @@ router.post('/', [verifyToken, isAdmin], async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+=======
+router.post('/', [verifyToken, isAdmin], (req, res) => {
+    const { name, contact } = req.body;
+    if (!name) return res.status(400).json({ message: 'Supplier name is required' });
+    
+    const newSupplier = {
+        id: Date.now().toString(),
+        name,
+        contact
+    };
+    store.suppliers.push(newSupplier);
+    res.status(201).json(newSupplier);
+>>>>>>> origin/ysmine
 });
 
 // Update supplier (Admin only)

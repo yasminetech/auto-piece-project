@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
-verifyToken = (req, res, next) => {
+const verifyToken = (req, res, next) => {
     let token = req.headers['x-access-token'] || req.headers['authorization'];
 
     if (!token) {
@@ -23,7 +23,7 @@ verifyToken = (req, res, next) => {
     });
 };
 
-isAdmin = (req, res, next) => {
+const isAdmin = (req, res, next) => {
     if (req.userRole === 'admin') {
         next();
         return;
