@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken');
-const store = require('../data/store');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey123';
 
