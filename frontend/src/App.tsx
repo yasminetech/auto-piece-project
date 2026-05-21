@@ -1,5 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { cancelOrder, createOrder, getOrders, getProducts, login, register } from './api';
+import AdminPanel from './AdminPanel';
 import type { CartItem, Order, Product, User } from './types';
 
 const storedUser = localStorage.getItem('auto-piece-user');
@@ -25,6 +26,9 @@ function statusLabel(status: string) {
 
 export default function App() {
   const [user, setUser] = useState<User | null>(initialUser);
+  const [space, setSpace] = useState<'store' | 'admin'>(() =>
+    window.location.hash === '#admin' ? 'admin' : 'store',
+  );
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -52,6 +56,20 @@ export default function App() {
     () => new Map(products.map((product) => [product.id, product])),
     [products],
   );
+
+  useEffect(() => {
+    function syncSpace() {
+      setSpace(window.location.hash === '#admin' ? 'admin' : 'store');
+    }
+
+    window.addEventListener('hashchange', syncSpace);
+    window.addEventListener('popstate', syncSpace);
+
+    return () => {
+      window.removeEventListener('hashchange', syncSpace);
+      window.removeEventListener('popstate', syncSpace);
+    };
+  }, []);
 
   useEffect(() => {
     loadProducts();
@@ -195,6 +213,25 @@ export default function App() {
     }
   }
 
+  function openAdmin() {
+    window.location.hash = 'admin';
+    setSpace('admin');
+  }
+
+  function openStore() {
+    window.history.pushState(null, '', window.location.pathname + window.location.search);
+    setSpace('store');
+  }
+
+  function logout() {
+    setUser(null);
+    setCart([]);
+  }
+
+  if (space === 'admin') {
+    return <AdminPanel user={user} onLogin={setUser} onLogout={logout} onOpenStore={openStore} />;
+  }
+
   return (
     <main className="app-shell">
       <header className="topbar">
@@ -208,16 +245,20 @@ export default function App() {
             <button
               className="ghost-button"
               type="button"
-              onClick={() => {
-                setUser(null);
-                setCart([]);
-              }}
+              onClick={logout}
             >
               Deconnexion
             </button>
+            {user.role === 'admin' && (
+              <button className="ghost-button" type="button" onClick={openAdmin}>
+                Administration
+              </button>
+            )}
           </div>
         ) : (
-          <span className="session-state">Invite</span>
+          <button className="ghost-button" type="button" onClick={openAdmin}>
+            Administration
+          </button>
         )}
       </header>
 
