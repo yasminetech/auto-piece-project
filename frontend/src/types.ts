@@ -15,6 +15,12 @@ export type Product = {
   category: string;
 };
 
+export type Supplier = {
+  id: string;
+  name: string;
+  contact: string;
+};
+
 export type CartItem = {
   product: Product;
   quantity: number;
@@ -32,4 +38,20 @@ export type Order = {
   paymentMethod: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'delivered' | string;
   date: string;
+};
+
+export type StockMovement = {
+  id: string;
+  productId: string;
+  type: 'entry' | 'exit' | string;
+  quantity: number;
+  date: string;
+  description: string;
+};
+
+export type DashboardStats = {
+  totalProducts: number;
+  outOfStock: number;
+  totalOrders: number;
+  recentMovements: StockMovement[];
 };
