@@ -262,6 +262,10 @@ h2 {
   color: #9b2c17;
 }
 
+.stock.critical {
+  color: #a15c00;
+}
+
 .auth-panel,
 .cart-panel,
 .orders-section {
@@ -378,6 +382,331 @@ h2 {
   line-height: 1.45;
 }
 
+.admin-shell {
+  padding-bottom: 52px;
+}
+
+.admin-topbar h1 {
+  font-size: clamp(2rem, 4vw, 3.3rem);
+  line-height: 1;
+}
+
+.admin-auth-layout {
+  display: grid;
+  width: min(430px, 100%);
+  margin: 28px auto 0;
+}
+
+.admin-auth-panel .tabs {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.admin-auth-panel .tabs button {
+  padding: 0 8px;
+}
+
+.admin-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.admin-nav button {
+  min-height: 40px;
+  border: 1px solid #cfd7df;
+  background: rgba(255, 255, 255, 0.94);
+  color: #25313a;
+  padding: 0 14px;
+}
+
+.admin-nav button.active {
+  background: #172026;
+  color: #fff;
+}
+
+.admin-section {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-panel,
+.stat-card,
+.alert-card {
+  border: 1px solid rgba(207, 215, 223, 0.9);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 40px rgba(23, 32, 38, 0.08);
+}
+
+.admin-panel,
+.stat-card {
+  padding: 16px;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.stat-card {
+  display: grid;
+  gap: 7px;
+}
+
+.stat-card span,
+.admin-panel .section-title > span {
+  color: #52616b;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.stat-card strong {
+  color: #172026;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.stat-card small {
+  color: #52616b;
+  font-weight: 700;
+}
+
+.stat-card.warning {
+  border-color: #f3d9a4;
+  background: #fffaf0;
+}
+
+.admin-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.bar-chart,
+.movement-list,
+.alert-list,
+.stock-summary,
+.supplier-mini-list,
+.details-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.chart-row {
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 10px;
+  color: #52616b;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.bar-track {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e6ebef;
+}
+
+.bar-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #0f766e, #d94828);
+}
+
+.movement-row,
+.alert-row,
+.stock-summary-row,
+.supplier-mini-row {
+  display: grid;
+  align-items: center;
+  gap: 10px;
+  border-top: 1px solid #e6ebef;
+  padding-top: 10px;
+}
+
+.movement-row {
+  grid-template-columns: 78px minmax(0, 1fr) 46px;
+}
+
+.alert-row,
+.stock-summary-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.supplier-mini-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.movement-row div,
+.alert-row div,
+.stock-summary-row div,
+.details-list {
+  min-width: 0;
+}
+
+.movement-row span,
+.alert-row span,
+.stock-summary-row span,
+.supplier-mini-row span,
+.details-list span {
+  color: #52616b;
+  font-size: 0.86rem;
+}
+
+.movement-badge,
+.critical-badge,
+.low-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: max-content;
+  border-radius: 999px;
+  padding: 6px 9px;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.movement-badge.entry,
+.low-badge {
+  background: #e6f4ef;
+  color: #12614f;
+}
+
+.movement-badge.exit,
+.critical-badge {
+  background: #ffe9e4;
+  color: #9b2c17;
+}
+
+.quick-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-toolbar {
+  grid-template-columns: minmax(0, 1fr) 220px auto;
+  align-items: end;
+}
+
+.admin-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.details-panel {
+  position: sticky;
+  top: 16px;
+}
+
+.details-list strong {
+  font-size: 1.08rem;
+}
+
+.table-panel {
+  overflow: hidden;
+}
+
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.admin-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  border-bottom: 1px solid #e6ebef;
+  padding: 12px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.admin-table th {
+  color: #52616b;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.admin-table td {
+  color: #25313a;
+  font-size: 0.9rem;
+}
+
+.admin-table td > span {
+  display: block;
+  margin-top: 4px;
+  color: #52616b;
+  font-size: 0.84rem;
+  line-height: 1.35;
+}
+
+.table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compact-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.82rem;
+}
+
+.table-empty {
+  padding: 12px 0 2px;
+}
+
+.alert-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.alert-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.alert-card h2 {
+  margin-top: 10px;
+}
+
+.alert-card p {
+  margin-top: 8px;
+  color: #52616b;
+  line-height: 1.45;
+}
+
 @media (max-width: 940px) {
   .layout {
     grid-template-columns: 1fr;
@@ -385,6 +714,15 @@ h2 {
 
   .side-column {
     grid-row: 1;
+  }
+
+  .admin-dashboard-grid,
+  .admin-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .details-panel {
+    position: static;
   }
 }
 
@@ -401,6 +739,20 @@ h2 {
   }
 
   .toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-nav,
+  .quick-actions,
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-nav button {
+    flex: 1 1 140px;
+  }
+
+  .chart-row {
     grid-template-columns: 1fr;
   }
 
