@@ -16,6 +16,7 @@ router.get('/movements', [verifyToken, isAdmin], async (req, res) => {
 });
 
 // Manual stock adjustment (Admin only)
+<<<<<<< HEAD
 router.post('/adjust', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { productId, quantity, type, description } = req.body; // type: 'entry' or 'exit'
@@ -32,6 +33,24 @@ router.post('/adjust', [verifyToken, isAdmin], async (req, res) => {
             await update('UPDATE products SET quantity = quantity - ? WHERE id = ?', [quantity, productId]);
         } else {
             return res.status(400).json({ message: 'Invalid movement type' });
+=======
+router.post('/adjust', [verifyToken, isAdmin], (req, res) => {
+    let { productId, quantity, type, description } = req.body; // type: 'entry' or 'exit'
+    const product = store.products.find(p => p.id === productId);
+    
+    if (!product) return res.status(404).json({ message: 'Product not found' });
+
+    quantity = Number(quantity);
+    if (isNaN(quantity) || quantity <= 0) {
+        return res.status(400).json({ message: 'Invalid quantity' });
+    }
+
+    if (type === 'entry') {
+        product.quantity += quantity;
+    } else if (type === 'exit') {
+        if (product.quantity < quantity) {
+            return res.status(400).json({ message: 'Insufficient stock' });
+>>>>>>> origin/ysmine
         }
 
         const movementResult = await insert(
@@ -46,6 +65,7 @@ router.post('/adjust', [verifyToken, isAdmin], async (req, res) => {
     }
 });
 
+<<<<<<< HEAD
 // Get stock summary for all products
 router.get('/summary', [verifyToken, isAdmin], async (req, res) => {
     try {
@@ -56,6 +76,19 @@ router.get('/summary', [verifyToken, isAdmin], async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+=======
+    const movement = {
+        id: Date.now().toString(),
+        productId,
+        type,
+        quantity,
+        date: new Date().toISOString(),
+        description: description || 'Manual adjustment'
+    };
+    store.movements.push(movement);
+
+    res.status(201).json({ product, movement });
+>>>>>>> origin/ysmine
 });
 
 module.exports = router;

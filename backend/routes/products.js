@@ -42,6 +42,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create product (Admin only)
+<<<<<<< HEAD
 router.post('/', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { name, description, price, quantity, supplierId, category } = req.body;
@@ -56,6 +57,35 @@ router.post('/', [verifyToken, isAdmin], async (req, res) => {
             'INSERT INTO movements (productId, type, quantity, description) VALUES (?, ?, ?, ?)',
             [result.insertId, 'entry', quantity, 'New product added']
         );
+=======
+router.post('/', [verifyToken, isAdmin], (req, res) => {
+    const { name, description, price, quantity, supplierId, category } = req.body;
+    
+    if (!name || price === undefined || quantity === undefined) {
+        return res.status(400).json({ message: 'Name, price and quantity are required' });
+    }
+
+    const newProduct = {
+        id: Date.now().toString(),
+        name,
+        description,
+        price: Number(price),
+        quantity: Number(quantity),
+        supplierId,
+        category
+    };
+    store.products.push(newProduct);
+    
+    // Log movement
+    store.movements.push({
+        id: (store.movements.length + 1).toString(),
+        productId: newProduct.id,
+        type: 'entry',
+        quantity: Number(quantity),
+        date: new Date().toISOString(),
+        description: 'New product added'
+    });
+>>>>>>> origin/ysmine
 
         res.status(201).json({ id: result.insertId, name, description, price, quantity, supplierId, category });
     } catch (error) {
