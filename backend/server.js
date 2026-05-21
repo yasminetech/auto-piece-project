@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const pool = require('./config/database');
 
 dotenv.config();
 
@@ -28,6 +29,19 @@ app.use('/api/dashboard', dashboardRoutes);
 
 app.get('/', (req, res) => {
     res.send('Auto-Piece API is running...');
+});
+
+// Graceful shutdown: close pool on process termination
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM signal received: closing HTTP server');
+    await pool.end();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT signal received: closing HTTP server');
+    await pool.end();
+    process.exit(0);
 });
 
 app.listen(PORT, () => {
