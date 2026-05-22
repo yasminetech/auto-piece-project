@@ -1,5 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+<<<<<<< HEAD
 import { cancelOrder, createOrder, getAllOrders, getOrders, getProducts, getStats, login, register } from './api';
+=======
+import { cancelOrder, createOrder, getOrders, getProducts, login, register, getAllOrders, getStats } from './api';
+>>>>>>> origin/ilyas-rabaa
 import AdminPanel from './AdminPanel';
 import type { CartItem, Order, Product, User } from './types';
 
@@ -273,6 +277,7 @@ export default function App() {
   }
 
   return (
+<<<<<<< HEAD
     <>
       <main className="app-shell">
         <header className="topbar">
@@ -280,6 +285,29 @@ export default function App() {
             <span className="brand-kicker">Auto Piece</span>
             <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
           </div>
+=======
+    <main className="app-shell">
+      <header className="topbar">
+        <div>
+          <span className="brand-kicker">Auto Piece</span>
+          <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
+        </div>
+        <div className="topbar-actions">
+          {user?.role === 'admin' && (
+            <>
+              <button
+                className={`ghost-button ${view === 'admin' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setView(view === 'admin' ? 'user' : 'admin')}
+              >
+                {view === 'admin' ? 'Voir Boutique' : 'Voir Admin'}
+              </button>
+              <button className="ghost-button" type="button" onClick={openAdmin}>
+                Administration
+              </button>
+            </>
+          )}
+>>>>>>> origin/ilyas-rabaa
           {user ? (
             <div className="user-box">
               <span>{user.username}</span>
@@ -301,7 +329,12 @@ export default function App() {
               Administration
             </button>
           )}
+<<<<<<< HEAD
         </header>
+=======
+        </div>
+      </header>
+>>>>>>> origin/ilyas-rabaa
 
         {(notice || error) && (
           <section className={`message ${error ? 'error' : 'success'}`}>
