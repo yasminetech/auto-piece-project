@@ -42,14 +42,21 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create product (Admin only)
-<<<<<<< HEAD
 router.post('/', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { name, description, price, quantity, supplierId, category } = req.body;
+        const product = {
+            name,
+            description: description ?? null,
+            price,
+            quantity,
+            supplierId: supplierId ?? null,
+            category
+        };
         
         const result = await insert(
             'INSERT INTO products (name, description, price, quantity, supplierId, category) VALUES (?, ?, ?, ?, ?, ?)',
-            [name, description, price, quantity, supplierId, category]
+            [product.name, product.description, product.price, product.quantity, product.supplierId, product.category]
         );
         
         // Log movement
@@ -57,37 +64,8 @@ router.post('/', [verifyToken, isAdmin], async (req, res) => {
             'INSERT INTO movements (productId, type, quantity, description) VALUES (?, ?, ?, ?)',
             [result.insertId, 'entry', quantity, 'New product added']
         );
-=======
-router.post('/', [verifyToken, isAdmin], (req, res) => {
-    const { name, description, price, quantity, supplierId, category } = req.body;
-    
-    if (!name || price === undefined || quantity === undefined) {
-        return res.status(400).json({ message: 'Name, price and quantity are required' });
-    }
 
-    const newProduct = {
-        id: Date.now().toString(),
-        name,
-        description,
-        price: Number(price),
-        quantity: Number(quantity),
-        supplierId,
-        category
-    };
-    store.products.push(newProduct);
-    
-    // Log movement
-    store.movements.push({
-        id: (store.movements.length + 1).toString(),
-        productId: newProduct.id,
-        type: 'entry',
-        quantity: Number(quantity),
-        date: new Date().toISOString(),
-        description: 'New product added'
-    });
->>>>>>> origin/ysmine
-
-        res.status(201).json({ id: result.insertId, name, description, price, quantity, supplierId, category });
+        res.status(201).json({ id: result.insertId, ...product });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -101,14 +79,29 @@ router.put('/:id', [verifyToken, isAdmin], async (req, res) => {
         
         if (!product) return res.status(404).json({ message: 'Product not found' });
 
+        const productUpdate = {
+            name: name ?? product.name,
+            description: description ?? product.description,
+            price: price ?? product.price,
+            quantity: quantity ?? product.quantity,
+            supplierId: supplierId ?? product.supplierId ?? null,
+            category: category ?? product.category
+        };
+
         await update(
             'UPDATE products SET name = ?, description = ?, price = ?, quantity = ?, supplierId = ?, category = ? WHERE id = ?',
-            [name || product.name, description || product.description, price || product.price, 
-             quantity !== undefined ? quantity : product.quantity, supplierId || product.supplierId, 
-             category || product.category, req.params.id]
+            [
+                productUpdate.name,
+                productUpdate.description,
+                productUpdate.price,
+                productUpdate.quantity,
+                productUpdate.supplierId,
+                productUpdate.category,
+                req.params.id
+            ]
         );
 
-        res.json({ id: req.params.id, name, description, price, quantity, supplierId, category });
+        res.json({ id: req.params.id, ...productUpdate });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

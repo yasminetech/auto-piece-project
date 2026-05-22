@@ -1,10 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-<<<<<<< HEAD
-import { cancelOrder, createOrder, getOrders, getProducts, login, register } from './api';
+import { cancelOrder, createOrder, getAllOrders, getOrders, getProducts, getStats, login, register } from './api';
 import AdminPanel from './AdminPanel';
-=======
-import { cancelOrder, createOrder, getOrders, getProducts, login, register, getAllOrders, getStats } from './api';
->>>>>>> origin/ysmine
 import type { CartItem, Order, Product, User } from './types';
 
 const storedUser = localStorage.getItem('auto-piece-user');
@@ -43,6 +39,7 @@ export default function App() {
   const [category, setCategory] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+  const [loginIdentifier, setLoginIdentifier] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -148,7 +145,7 @@ export default function App() {
         setNotice('Compte cree. Vous pouvez vous connecter.');
         setAuthMode('login');
       } else {
-        const loggedUser = await login(email, password);
+        const loggedUser = await login(loginIdentifier, password);
         setUser(loggedUser);
         setNotice(`Bienvenue ${loggedUser.username}`);
       }
@@ -156,6 +153,7 @@ export default function App() {
       setEmail('');
       setPhone('');
       setUsername('');
+      setLoginIdentifier('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Authentification impossible');
     } finally {
@@ -275,324 +273,317 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <div>
-          <span className="brand-kicker">Auto Piece</span>
-          <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
-        </div>
-<<<<<<< HEAD
-        {user ? (
-          <div className="user-box">
-            <span>{user.username}</span>
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={logout}
-=======
-        <div className="topbar-actions">
-          {user?.role === 'admin' && (
-            <button 
-              className={`ghost-button ${view === 'admin' ? 'active' : ''}`}
-              onClick={() => setView(view === 'admin' ? 'user' : 'admin')}
->>>>>>> origin/ysmine
-            >
-              {view === 'admin' ? 'Voir Boutique' : 'Voir Admin'}
-            </button>
-<<<<<<< HEAD
-            {user.role === 'admin' && (
-              <button className="ghost-button" type="button" onClick={openAdmin}>
-                Administration
-              </button>
-            )}
+    <>
+      <main className="app-shell">
+        <header className="topbar">
+          <div>
+            <span className="brand-kicker">Auto Piece</span>
+            <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
           </div>
-        ) : (
-          <button className="ghost-button" type="button" onClick={openAdmin}>
-            Administration
-          </button>
-        )}
-=======
-          )}
           {user ? (
             <div className="user-box">
-              <span>{user.username} ({user.role})</span>
+              <span>{user.username}</span>
               <button
                 className="ghost-button"
                 type="button"
-                onClick={() => {
-                  setUser(null);
-                  setCart([]);
-                }}
+                onClick={logout}
               >
                 Deconnexion
               </button>
+              {user.role === 'admin' && (
+                <button className="ghost-button" type="button" onClick={openAdmin}>
+                  Administration
+                </button>
+              )}
             </div>
           ) : (
-            <span className="session-state">Invite</span>
+            <button className="ghost-button" type="button" onClick={openAdmin}>
+              Administration
+            </button>
           )}
-        </div>
->>>>>>> origin/ysmine
-      </header>
+        </header>
 
-      {(notice || error) && (
-        <section className={`message ${error ? 'error' : 'success'}`}>
-          {error || notice}
-        </section>
-      )}
+        {(notice || error) && (
+          <section className={`message ${error ? 'error' : 'success'}`}>
+            {error || notice}
+          </section>
+        )}
 
-      {view === 'admin' && user?.role === 'admin' ? (
-        <section className="layout admin-layout">
-          <div className="main-column">
-            <section className="stats-grid">
-              <div className="stat-card">
-                <h3>Produits</h3>
-                <p>{stats?.totalProducts || 0}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Rupture de stock</h3>
-                <p className={stats?.outOfStock ? 'danger' : ''}>{stats?.outOfStock || 0}</p>
-              </div>
-              <div className="stat-card">
-                <h3>Commandes totales</h3>
-                <p>{stats?.totalOrders || 0}</p>
-              </div>
-            </section>
+        {view === 'admin' && user?.role === 'admin' ? (
+          <section className="layout admin-layout">
+            <div className="main-column">
+              <section className="stats-grid">
+                <div className="stat-card">
+                  <h3>Produits</h3>
+                  <p>{stats?.totalProducts || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Rupture de stock</h3>
+                  <p className={stats?.outOfStock ? 'danger' : ''}>{stats?.outOfStock || 0}</p>
+                </div>
+                <div className="stat-card">
+                  <h3>Commandes totales</h3>
+                  <p>{stats?.totalOrders || 0}</p>
+                </div>
+              </section>
 
-            <section className="orders-section">
-              <div className="section-title">
-                <h2>Toutes les commandes</h2>
-                <button type="button" className="ghost-button" onClick={() => loadAdminData(user.accessToken)}>
-                  Actualiser
-                </button>
-              </div>
-              {adminOrders.length === 0 && <p className="empty-state">Aucune commande.</p>}
-              {adminOrders.map((order) => (
-                <article className="order-row" key={order.id}>
-                  <div>
-                    <strong>Commande #{order.id}</strong>
-                    <span>Par: {order.username}</span>
-                    <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
-                  </div>
-                  <div className="order-items">
-                    {order.items.map((item) => {
-                      const product = productById.get(item.productId);
-                      return (
-                        <span key={`${order.id}-${item.productId}`}>
-                          {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
-                        </span>
-                      );
-                    })}
-                  </div>
-                  <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
-                </article>
-              ))}
-            </section>
-          </div>
-          <aside className="side-column">
-            <div className="admin-actions-panel">
-              <h2>Actions Rapides</h2>
-              <p>Gestion des produits et stocks (Prochainement)</p>
-              <button disabled className="ghost-button">Ajouter un produit</button>
-              <button disabled className="ghost-button">Gérer les fournisseurs</button>
-            </div>
-          </aside>
-        </section>
-      ) : (
-        <section className="layout">
-          <div className="main-column">
-            <section className="toolbar" aria-label="Recherche produits">
-              <label>
-                Recherche
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Nom ou description"
-                />
-              </label>
-              <label>
-                Categorie
-                <select value={category} onChange={(event) => setCategory(event.target.value)}>
-                  <option value="">Toutes</option>
-                  {categories.map((item) => (
-                    <option key={item} value={item}>
-                      {item}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </section>
-
-            <section className="product-grid" aria-label="Catalogue">
-              {products.map((product) => (
-                <article className="product-card" key={product.id}>
-                  <div className="part-visual">
-                    <span>{product.category.slice(0, 2).toUpperCase()}</span>
-                  </div>
-                  <div className="product-content">
-                    <div>
-                      <span className="category-pill">{product.category}</span>
-                      <h2>{product.name}</h2>
-                      <p>{product.description}</p>
-                    </div>
-                    <div className="product-meta">
-                      <strong>{formatPrice(product.price)}</strong>
-                      <span className={product.quantity > 0 ? 'stock' : 'stock empty'}>
-                        {product.quantity > 0 ? `${product.quantity} en stock` : 'Rupture'}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={product.quantity <= 0}
-                      onClick={() => addToCart(product)}
-                    >
-                      Ajouter
-                    </button>
-                  </div>
-                </article>
-              ))}
-              {products.length === 0 && <p className="empty-state">Aucun produit trouve.</p>}
-            </section>
-
-            <section className="orders-section">
-              <div className="section-title">
-                <h2>Mes commandes</h2>
-                {user && (
-                  <button type="button" className="ghost-button" onClick={() => loadOrders(user.accessToken)}>
+              <section className="orders-section">
+                <div className="section-title">
+                  <h2>Toutes les commandes</h2>
+                  <button type="button" className="ghost-button" onClick={() => loadAdminData(user.accessToken)}>
                     Actualiser
                   </button>
-                )}
+                </div>
+                {adminOrders.length === 0 && <p className="empty-state">Aucune commande.</p>}
+                {adminOrders.map((order) => (
+                  <article className="order-row" key={order.id}>
+                    <div>
+                      <strong>Commande #{order.id}</strong>
+                      <span>Par: {order.username}</span>
+                      <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div className="order-items">
+                      {order.items.map((item) => {
+                        const product = productById.get(item.productId);
+                        return (
+                          <span key={`${order.id}-${item.productId}`}>
+                            {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
+                  </article>
+                ))}
+              </section>
+            </div>
+            <aside className="side-column">
+              <div className="admin-actions-panel">
+                <h2>Actions Rapides</h2>
+                <p>Gestion des produits et stocks (Prochainement)</p>
+                <button disabled className="ghost-button">Ajouter un produit</button>
+                <button disabled className="ghost-button">Gérer les fournisseurs</button>
               </div>
-              {!user && <p className="empty-state">Connectez-vous pour suivre vos commandes.</p>}
-              {user && orders.length === 0 && <p className="empty-state">Aucune commande pour le moment.</p>}
-              {orders.map((order) => (
-                <article className="order-row" key={order.id}>
-                  <div>
-                    <strong>Commande #{order.id}</strong>
-                    <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
-                  </div>
-                  <div className="order-items">
-                    {order.items.map((item) => {
-                      const product = productById.get(item.productId);
-                      return (
-                        <span key={`${order.id}-${item.productId}`}>
-                          {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+            </aside>
+          </section>
+        ) : (
+          <section className="layout">
+            <div className="main-column">
+              <section className="toolbar" aria-label="Recherche produits">
+                <label>
+                  Recherche
+                  <input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Nom ou description"
+                  />
+                </label>
+                <label>
+                  Categorie
+                  <select value={category} onChange={(event) => setCategory(event.target.value)}>
+                    <option value="">Toutes</option>
+                    {categories.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </section>
+
+              <section className="product-grid" aria-label="Catalogue">
+                {products.map((product) => (
+                  <article className="product-card" key={product.id}>
+                    <div className="part-visual">
+                      <span>{product.category.slice(0, 2).toUpperCase()}</span>
+                    </div>
+                    <div className="product-content">
+                      <div>
+                        <span className="category-pill">{product.category}</span>
+                        <h2>{product.name}</h2>
+                        <p>{product.description}</p>
+                      </div>
+                      <div className="product-meta">
+                        <strong>{formatPrice(product.price)}</strong>
+                        <span className={product.quantity > 0 ? 'stock' : 'stock empty'}>
+                          {product.quantity > 0 ? `${product.quantity} en stock` : 'Rupture'}
                         </span>
-                      );
-                    })}
-                  </div>
-                  <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
-                  {order.status !== 'cancelled' && (
-                    <button type="button" className="ghost-button danger" onClick={() => handleCancel(order.id)}>
-                      Annuler
+                      </div>
+                      <button
+                        type="button"
+                        disabled={product.quantity <= 0}
+                        onClick={() => addToCart(product)}
+                      >
+                        Ajouter
+                      </button>
+                    </div>
+                  </article>
+                ))}
+                {products.length === 0 && <p className="empty-state">Aucun produit trouve.</p>}
+              </section>
+
+              <section className="orders-section">
+                <div className="section-title">
+                  <h2>Mes commandes</h2>
+                  {user && (
+                    <button type="button" className="ghost-button" onClick={() => loadOrders(user.accessToken)}>
+                      Actualiser
                     </button>
                   )}
-                </article>
-              ))}
-            </section>
-          </div>
-
-          <aside className="side-column">
-            {!user && (
-              <section className="auth-panel">
-                <div className="tabs">
-                  <button
-                    className={authMode === 'login' ? 'active' : ''}
-                    type="button"
-                    onClick={() => setAuthMode('login')}
-                  >
-                    Connexion
-                  </button>
-                  <button
-                    className={authMode === 'register' ? 'active' : ''}
-                    type="button"
-                    onClick={() => setAuthMode('register')}
-                  >
-                    Inscription
-                  </button>
                 </div>
-                <form onSubmit={handleAuth}>
-                  {authMode === 'login' ? (
-                    <label>
-                      Email
-                      <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-                    </label>
-                  ) : (
-                    <>
-                      <label>
-                        Utilisateur
-                        <input value={username} onChange={(event) => setUsername(event.target.value)} required />
-                      </label>
-                      <label>
-                        Email
-                        <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-                      </label>
-                      <label>
-                        Telephone
-                        <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required />
-                      </label>
-                    </>
-                  )}
-                  <label>
-                    Mot de passe
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      minLength={4}
-                      required
-                    />
-                  </label>
-                  <button type="submit" disabled={loading}>
-                    {authMode === 'login' ? 'Se connecter' : 'Creer le compte'}
-                  </button>
-                </form>
+                {!user && <p className="empty-state">Connectez-vous pour suivre vos commandes.</p>}
+                {user && orders.length === 0 && <p className="empty-state">Aucune commande pour le moment.</p>}
+                {orders.map((order) => (
+                  <article className="order-row" key={order.id}>
+                    <div>
+                      <strong>Commande #{order.id}</strong>
+                      <span>{new Date(order.date).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <div className="order-items">
+                      {order.items.map((item) => {
+                        const product = productById.get(item.productId);
+                        return (
+                          <span key={`${order.id}-${item.productId}`}>
+                            {product?.name ?? `Produit ${item.productId}`} x {item.quantity}
+                          </span>
+                        );
+                      })}
+                    </div>
+                    <span className={`status status-${order.status}`}>{statusLabel(order.status)}</span>
+                    {order.status !== 'cancelled' && (
+                      <button type="button" className="ghost-button danger" onClick={() => handleCancel(order.id)}>
+                        Annuler
+                      </button>
+                    )}
+                  </article>
+                ))}
               </section>
-            )}
+            </div>
 
-            <section className="cart-panel">
-              <div className="section-title">
-                <h2>Panier</h2>
-                <span>{cart.length}</span>
-              </div>
-              {cart.length === 0 && <p className="empty-state">Votre panier est vide.</p>}
-              {cart.map((item) => (
-                <div className="cart-line" key={item.product.id}>
-                  <div>
-                    <strong>{item.product.name}</strong>
-                    <span>{formatPrice(item.product.price)}</span>
+            <aside className="side-column">
+              {!user && (
+                <section className="auth-panel">
+                  <div className="tabs">
+                    <button
+                      className={authMode === 'login' ? 'active' : ''}
+                      type="button"
+                      onClick={() => setAuthMode('login')}
+                    >
+                      Connexion
+                    </button>
+                    <button
+                      className={authMode === 'register' ? 'active' : ''}
+                      type="button"
+                      onClick={() => setAuthMode('register')}
+                    >
+                      Inscription
+                    </button>
                   </div>
-                  <input
-                    aria-label={`Quantite ${item.product.name}`}
-                    type="number"
-                    min="1"
-                    max={item.product.quantity}
-                    value={item.quantity}
-                    onChange={(event) => updateCart(item.product.id, Number(event.target.value))}
-                  />
-                  <button type="button" className="icon-button" onClick={() => updateCart(item.product.id, 0)}>
-                    x
-                  </button>
+                  <form onSubmit={handleAuth}>
+                    {authMode === 'login' ? (
+                      <label>
+                        Utilisateur ou Email
+                        <input value={loginIdentifier} onChange={(event) => setLoginIdentifier(event.target.value)} required />
+                      </label>
+                    ) : (
+                      <>
+                        <label>
+                          Utilisateur
+                          <input value={username} onChange={(event) => setUsername(event.target.value)} required />
+                        </label>
+                        <label>
+                          Email
+                          <input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+                        </label>
+                        <label>
+                          Telephone
+                          <input type="tel" value={phone} onChange={(event) => setPhone(event.target.value)} required />
+                        </label>
+                      </>
+                    )}
+                    <label>
+                      Mot de passe
+                      <input
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                        minLength={4}
+                        required
+                      />
+                    </label>
+                    <button type="submit" disabled={loading}>
+                      {authMode === 'login' ? 'Se connecter' : 'Creer le compte'}
+                    </button>
+                  </form>
+                </section>
+              )}
+
+              <section className="cart-panel">
+                <div className="section-title">
+                  <h2>Panier</h2>
+                  <span>{cart.length}</span>
                 </div>
-              ))}
-              <label>
-                Paiement
-                <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
-                  <option value="cash">Paiement a la livraison</option>
-                  <option value="card">Carte bancaire</option>
-                  <option value="transfer">Virement</option>
-                </select>
-              </label>
-              <div className="total-line">
-                <span>Total</span>
-                <strong>{formatPrice(cartTotal)}</strong>
-              </div>
-              <button type="button" disabled={loading || cart.length === 0} onClick={submitOrder}>
-                Valider la commande
-              </button>
-            </section>
-          </aside>
-        </section>
-      )}
-    </main>
+                {cart.length === 0 && <p className="empty-state">Votre panier est vide.</p>}
+                {cart.map((item) => (
+                  <div className="cart-line" key={item.product.id}>
+                    <div>
+                      <strong>{item.product.name}</strong>
+                      <span>{formatPrice(item.product.price)}</span>
+                    </div>
+                    <input
+                      aria-label={`Quantite ${item.product.name}`}
+                      type="number"
+                      min="1"
+                      max={item.product.quantity}
+                      value={item.quantity}
+                      onChange={(event) => updateCart(item.product.id, Number(event.target.value))}
+                    />
+                    <button type="button" className="icon-button" onClick={() => updateCart(item.product.id, 0)}>
+                      x
+                    </button>
+                  </div>
+                ))}
+                <label>
+                  Paiement
+                  <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)}>
+                    <option value="cash">Paiement a la livraison</option>
+                    <option value="card">Carte bancaire</option>
+                    <option value="transfer">Virement</option>
+                  </select>
+                </label>
+                <div className="total-line">
+                  <span>Total</span>
+                  <strong>{formatPrice(cartTotal)}</strong>
+                </div>
+                <button type="button" disabled={loading || cart.length === 0} onClick={submitOrder}>
+                  Valider la commande
+                </button>
+              </section>
+            </aside>
+          </section>
+        )}
+      </main>
+      <footer className="app-footer">
+        <div className="footer-content">
+          <div className="footer-section">
+            <h3>Auto Piece</h3>
+            <p>Votre partenaire pour toutes vos pièces détachées automobiles.</p>
+          </div>
+          <div className="footer-section">
+            <h3>Contact</h3>
+            <p>Email: contact@autopiece.com</p>
+            <p>Tél: +33 1 23 45 67 89</p>
+          </div>
+          <div className="footer-section">
+            <h3>Horaires</h3>
+            <p>Lun - Ven: 08:00 - 18:00</p>
+            <p>Sam: 09:00 - 12:00</p>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <p>&copy; 2026 Auto Piece - Tous droits réservés</p>
+        </div>
+      </footer>
+    </>
   );
 }

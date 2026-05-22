@@ -14,31 +14,21 @@ router.get('/', [verifyToken], async (req, res) => {
 });
 
 // Create supplier (Admin only)
-<<<<<<< HEAD
 router.post('/', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { name, contact } = req.body;
+        const supplier = {
+            name,
+            contact: contact ?? null
+        };
         const result = await insert(
             'INSERT INTO suppliers (name, contact) VALUES (?, ?)',
-            [name, contact]
+            [supplier.name, supplier.contact]
         );
-        res.status(201).json({ id: result.insertId, name, contact });
+        res.status(201).json({ id: result.insertId, ...supplier });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-=======
-router.post('/', [verifyToken, isAdmin], (req, res) => {
-    const { name, contact } = req.body;
-    if (!name) return res.status(400).json({ message: 'Supplier name is required' });
-    
-    const newSupplier = {
-        id: Date.now().toString(),
-        name,
-        contact
-    };
-    store.suppliers.push(newSupplier);
-    res.status(201).json(newSupplier);
->>>>>>> origin/ysmine
 });
 
 // Update supplier (Admin only)
@@ -49,12 +39,17 @@ router.put('/:id', [verifyToken, isAdmin], async (req, res) => {
         
         if (!supplier) return res.status(404).json({ message: 'Supplier not found' });
 
+        const supplierUpdate = {
+            name: name ?? supplier.name,
+            contact: contact ?? supplier.contact ?? null
+        };
+
         await update(
             'UPDATE suppliers SET name = ?, contact = ? WHERE id = ?',
-            [name || supplier.name, contact || supplier.contact, req.params.id]
+            [supplierUpdate.name, supplierUpdate.contact, req.params.id]
         );
 
-        res.json({ id: req.params.id, name: name || supplier.name, contact: contact || supplier.contact });
+        res.json({ id: req.params.id, ...supplierUpdate });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

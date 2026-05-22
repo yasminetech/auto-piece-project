@@ -7,8 +7,8 @@ const { verifyToken, isAdmin } = require('../middleware/authJwt');
 router.post('/', [verifyToken], async (req, res) => {
     try {
         const { items, paymentMethod } = req.body; // items: [{ productId, quantity }]
+        const normalizedPaymentMethod = paymentMethod ?? 'cash';
         
-<<<<<<< HEAD
         // Check stock for all items
         for (const item of items) {
             const product = await queryOne('SELECT * FROM products WHERE id = ?', [item.productId]);
@@ -23,27 +23,6 @@ router.post('/', [verifyToken], async (req, res) => {
             const product = await queryOne('SELECT price FROM products WHERE id = ?', [item.productId]);
             total += (product.price * item.quantity);
         }
-=======
-        store.movements.push({
-            id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
-            productId: item.productId,
-            type: 'exit',
-            quantity: item.quantity,
-            date: new Date().toISOString(),
-            description: `Order placed by user ${req.userId}`
-        });
-    });
-
-    const newOrder = {
-        id: Date.now().toString(),
-        userId: req.userId,
-        items,
-        paymentMethod,
-        status: 'pending',
-        date: new Date().toISOString()
-    };
-    store.orders.push(newOrder);
->>>>>>> origin/ysmine
 
         const orderResult = await insert(
             'INSERT INTO orders (userId, status, total) VALUES (?, ?, ?)',
@@ -71,7 +50,7 @@ router.post('/', [verifyToken], async (req, res) => {
             );
         }
 
-        res.status(201).json({ id: orderResult.insertId, userId: req.userId, items, paymentMethod, status: 'pending', total });
+        res.status(201).json({ id: orderResult.insertId, userId: req.userId, items, paymentMethod: normalizedPaymentMethod, status: 'pending', total });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -81,9 +60,14 @@ router.post('/', [verifyToken], async (req, res) => {
 router.get('/', [verifyToken], async (req, res) => {
     try {
         const orders = await query(
-            'SELECT o.*, COUNT(oi.id) as itemCount FROM orders o LEFT JOIN order_items oi ON o.id = oi.orderId WHERE o.userId = ? GROUP BY o.id',
+            'SELECT *, created_at as date FROM orders WHERE userId = ? ORDER BY created_at DESC',
             [req.userId]
         );
+
+        for (const order of orders) {
+            order.items = await query('SELECT productId, quantity, price FROM order_items WHERE orderId = ?', [order.id]);
+        }
+
         res.json(orders);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -91,33 +75,29 @@ router.get('/', [verifyToken], async (req, res) => {
 });
 
 // Get all orders (Admin only)
-<<<<<<< HEAD
 router.get('/all', [verifyToken, isAdmin], async (req, res) => {
     try {
         const orders = await query(
-            'SELECT o.*, u.username, COUNT(oi.id) as itemCount FROM orders o LEFT JOIN users u ON o.userId = u.id LEFT JOIN order_items oi ON o.id = oi.orderId GROUP BY o.id ORDER BY o.created_at DESC'
+            'SELECT o.*, u.username, o.created_at as date FROM orders o LEFT JOIN users u ON o.userId = u.id ORDER BY o.created_at DESC'
         );
+
+        for (const order of orders) {
+            order.items = await query('SELECT productId, quantity, price FROM order_items WHERE orderId = ?', [order.id]);
+        }
+
         res.json(orders);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-=======
-router.get('/all', [verifyToken, isAdmin], (req, res) => {
-    const ordersWithUsers = store.orders.map(order => {
-        const user = store.users.find(u => u.id === order.userId);
-        return {
-            ...order,
-            username: user ? user.username : 'Unknown User'
-        };
-    });
-    res.json(ordersWithUsers);
->>>>>>> origin/ysmine
 });
 
 // Update order status (Admin only)
 router.put('/:id/status', [verifyToken, isAdmin], async (req, res) => {
     try {
         const { status } = req.body;
+        if (!status) {
+            return res.status(400).json({ message: 'Status is required' });
+        }
         const order = await queryOne('SELECT * FROM orders WHERE id = ?', [req.params.id]);
         if (!order) return res.status(404).json({ message: 'Order not found' });
 

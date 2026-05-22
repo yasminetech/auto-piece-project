@@ -541,7 +541,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
               {authMode === 'login' && (
                 <>
                   <label>
-                    Administrateur
+                    Utilisateur ou Email
                     <input
                       value={authUsername}
                       onChange={(event) => setAuthUsername(event.target.value)}
@@ -567,7 +567,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
               {authMode === 'forgot' && (
                 <>
                   <label>
-                    Utilisateur
+                    Utilisateur ou Email
                     <input
                       value={authUsername}
                       onChange={(event) => setAuthUsername(event.target.value)}
@@ -1218,49 +1218,70 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   }
 
   return (
-    <main className="app-shell admin-shell">
-      <header className="topbar admin-topbar">
-        <div>
-          <span className="brand-kicker">Auto Piece</span>
-          <h1>Administration</h1>
+    <>
+      <main className="app-shell admin-shell">
+        <header className="topbar admin-topbar">
+          <div>
+            <span className="brand-kicker">Auto Piece</span>
+            <h1>Administration</h1>
+          </div>
+          <div className="user-box">
+            <span>{user.username}</span>
+            <button className="ghost-button" type="button" onClick={onOpenStore}>
+              Boutique
+            </button>
+            <button className="ghost-button" type="button" onClick={onLogout}>
+              Deconnexion
+            </button>
+          </div>
+        </header>
+
+        {(notice || error) && (
+          <section className={`message ${error ? 'error' : 'success'}`}>
+            {error || notice}
+          </section>
+        )}
+
+        <nav className="admin-nav" aria-label="Navigation admin">
+          {[
+            ['dashboard', 'Dashboard'],
+            ['products', 'Produits'],
+            ['stock', 'Stock'],
+            ['suppliers', 'Fournisseurs'],
+            ['alerts', 'Alertes'],
+          ].map(([item, label]) => (
+            <button
+              className={section === item ? 'active' : ''}
+              key={item}
+              type="button"
+              onClick={() => setSection(item as AdminSection)}
+            >
+              {label}
+            </button>
+          ))}
+        </nav>
+
+        {renderSection()}
+      </main>
+      <footer className="app-footer">
+        <div className="footer-content">
+          <div className="footer-section">
+            <h3>Auto Piece Admin</h3>
+            <p>Interface de gestion interne pour le catalogue et les stocks.</p>
+          </div>
+          <div className="footer-section">
+            <h3>Support Technique</h3>
+            <p>Email: admin-support@autopiece.com</p>
+          </div>
+          <div className="footer-section">
+            <h3>Statut Système</h3>
+            <p>Tous les services sont opérationnels.</p>
+          </div>
         </div>
-        <div className="user-box">
-          <span>{user.username}</span>
-          <button className="ghost-button" type="button" onClick={onOpenStore}>
-            Boutique
-          </button>
-          <button className="ghost-button" type="button" onClick={onLogout}>
-            Deconnexion
-          </button>
+        <div className="footer-bottom">
+          <p>&copy; 2026 Auto Piece - Administration</p>
         </div>
-      </header>
-
-      {(notice || error) && (
-        <section className={`message ${error ? 'error' : 'success'}`}>
-          {error || notice}
-        </section>
-      )}
-
-      <nav className="admin-nav" aria-label="Navigation admin">
-        {[
-          ['dashboard', 'Dashboard'],
-          ['products', 'Produits'],
-          ['stock', 'Stock'],
-          ['suppliers', 'Fournisseurs'],
-          ['alerts', 'Alertes'],
-        ].map(([item, label]) => (
-          <button
-            className={section === item ? 'active' : ''}
-            key={item}
-            type="button"
-            onClick={() => setSection(item as AdminSection)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {renderSection()}
-    </main>
+      </footer>
+    </>
   );
 }

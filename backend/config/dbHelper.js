@@ -7,6 +7,7 @@ const pool = require('./database');
  * @returns {Promise} Query result
  */
 async function query(sql, params = []) {
+  validateParams(params);
   const connection = await pool.getConnection();
   try {
     const [results] = await connection.execute(sql, params);
@@ -34,6 +35,7 @@ async function queryOne(sql, params = []) {
  * @returns {Promise} Insert result with insertId
  */
 async function insert(sql, params = []) {
+  validateParams(params);
   const connection = await pool.getConnection();
   try {
     const [result] = await connection.execute(sql, params);
@@ -50,6 +52,7 @@ async function insert(sql, params = []) {
  * @returns {Promise} Update result with affectedRows
  */
 async function update(sql, params = []) {
+  validateParams(params);
   const connection = await pool.getConnection();
   try {
     const [result] = await connection.execute(sql, params);
@@ -66,12 +69,20 @@ async function update(sql, params = []) {
  * @returns {Promise} Delete result with affectedRows
  */
 async function deleteQuery(sql, params = []) {
+  validateParams(params);
   const connection = await pool.getConnection();
   try {
     const [result] = await connection.execute(sql, params);
     return result;
   } finally {
     connection.release();
+  }
+}
+
+function validateParams(params) {
+  const index = params.findIndex((param) => param === undefined);
+  if (index !== -1) {
+    throw new Error(`SQL parameter at index ${index} is undefined`);
   }
 }
 

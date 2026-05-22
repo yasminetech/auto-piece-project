@@ -26,16 +26,16 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new Error(payload?.message ?? 'Une erreur est survenue');
+    throw new Error(payload?.message ?? payload?.error ?? 'Une erreur est survenue');
   }
 
   return payload as T;
 }
 
-export function login(email: string, password: string) {
+export function login(username: string, password: string) {
   return request<User>('/auth/login', {
     method: 'POST',
-    body: { email, password },
+    body: { username, password },
   });
 }
 
