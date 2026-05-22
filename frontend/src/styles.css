@@ -84,6 +84,14 @@ label {
   padding: 22px 0 24px;
 }
 
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .brand-kicker,
 .session-state {
   color: #0f766e;

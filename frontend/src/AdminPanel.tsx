@@ -10,7 +10,7 @@ import {
   getProducts,
   getStockMovements,
   getSuppliers,
-  login,
+  loginAdmin,
   updateAdminProduct,
   updateSupplier,
 } from './api';
@@ -591,9 +591,9 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     setError('');
     setNotice('');
 
-    try {
+      try {
       if (authMode === 'login') {
-        const loggedUser = await login(authUsername, authPassword);
+        const loggedUser = await loginAdmin(authUsername, authPassword);
 
         if (loggedUser.role !== 'admin') {
           throw new Error('Acces reserve aux administrateurs');

@@ -1,10 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
-<<<<<<< HEAD
-import { cancelOrder, createOrder, getOrders, getProducts, login, register } from './api';
-import AdminPanel from './AdminPanel';
-=======
 import { cancelOrder, createOrder, getOrders, getProducts, login, register, getAllOrders, getStats } from './api';
->>>>>>> origin/ysmine
+import AdminPanel from './AdminPanel';
 import type { CartItem, Order, Product, User } from './types';
 
 const storedUser = localStorage.getItem('auto-piece-user');
@@ -281,37 +277,20 @@ export default function App() {
           <span className="brand-kicker">Auto Piece</span>
           <h1>{view === 'admin' ? 'Tableau de bord Admin' : 'Espace utilisateur'}</h1>
         </div>
-<<<<<<< HEAD
-        {user ? (
-          <div className="user-box">
-            <span>{user.username}</span>
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={logout}
-=======
         <div className="topbar-actions">
           {user?.role === 'admin' && (
-            <button 
-              className={`ghost-button ${view === 'admin' ? 'active' : ''}`}
-              onClick={() => setView(view === 'admin' ? 'user' : 'admin')}
->>>>>>> origin/ysmine
-            >
-              {view === 'admin' ? 'Voir Boutique' : 'Voir Admin'}
-            </button>
-<<<<<<< HEAD
-            {user.role === 'admin' && (
+            <>
+              <button
+                className={`ghost-button ${view === 'admin' ? 'active' : ''}`}
+                type="button"
+                onClick={() => setView(view === 'admin' ? 'user' : 'admin')}
+              >
+                {view === 'admin' ? 'Voir Boutique' : 'Voir Admin'}
+              </button>
               <button className="ghost-button" type="button" onClick={openAdmin}>
                 Administration
               </button>
-            )}
-          </div>
-        ) : (
-          <button className="ghost-button" type="button" onClick={openAdmin}>
-            Administration
-          </button>
-        )}
-=======
+            </>
           )}
           {user ? (
             <div className="user-box">
@@ -319,19 +298,17 @@ export default function App() {
               <button
                 className="ghost-button"
                 type="button"
-                onClick={() => {
-                  setUser(null);
-                  setCart([]);
-                }}
+                onClick={logout}
               >
                 Deconnexion
               </button>
             </div>
           ) : (
-            <span className="session-state">Invite</span>
+            <button className="ghost-button" type="button" onClick={openAdmin}>
+              Administration
+            </button>
           )}
         </div>
->>>>>>> origin/ysmine
       </header>
 
       {(notice || error) && (

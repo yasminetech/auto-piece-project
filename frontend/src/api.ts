@@ -39,6 +39,13 @@ export function login(email: string, password: string) {
   });
 }
 
+export function loginAdmin(username: string, password: string) {
+  return request<User>('/auth/login', {
+    method: 'POST',
+    body: { username, password },
+  });
+}
+
 export function register(username: string, password: string, email: string, phone: string) {
   return request<{ message: string }>('/auth/register', {
     method: 'POST',
