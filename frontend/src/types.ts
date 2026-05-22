@@ -12,7 +12,39 @@ export type Product = {
   price: number;
   quantity: number;
   supplierId?: string;
+  supplierName?: string;
   category: string;
+  primaryImage?: string;
+  ratingAverage?: number;
+  reviewCount?: number;
+};
+
+export type ProductMedia = {
+  id: string;
+  productId: string;
+  kind: 'image' | 'video';
+  url: string;
+  altText: string;
+  sortOrder: number;
+};
+
+export type ProductReview = {
+  id: string;
+  productId: string;
+  userId: string;
+  username: string;
+  rating: number;
+  comment: string;
+  isVisible: boolean;
+  createdAt: string;
+  updatedAt: string;
+  productName?: string;
+};
+
+export type ProductDetail = Product & {
+  media: ProductMedia[];
+  reviews: ProductReview[];
+  similarProducts: Product[];
 };
 
 export type Supplier = {
@@ -29,6 +61,7 @@ export type CartItem = {
 export type OrderItem = {
   productId: string;
   quantity: number;
+  price?: number;
 };
 
 export type Order = {
@@ -38,6 +71,7 @@ export type Order = {
   paymentMethod: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'delivered' | string;
   date: string;
+  total?: number;
 };
 
 export type StockMovement = {
@@ -53,5 +87,7 @@ export type DashboardStats = {
   totalProducts: number;
   outOfStock: number;
   totalOrders: number;
+  totalRevenue?: number;
   recentMovements: StockMovement[];
+  lowStockProducts?: Pick<Product, 'id' | 'name' | 'quantity'>[];
 };

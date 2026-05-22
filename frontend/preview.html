@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Auto Piece — Design Preview</title>
+  <link rel="stylesheet" href="src/ui-theme.css">
+  <link rel="stylesheet" href="src/styles.css">
+  <style>
+    body{padding:28px;background:transparent}
+    .preview-wrap{max-width:1200px;margin:0 auto;}
+    .demo-row{display:grid;grid-template-columns:1fr 420px;gap:20px;margin-top:18px}
+    .preview-note{font-size:0.9rem;color:var(--muted);margin-top:12px}
+  </style>
+</head>
+<body data-store-theme="dark">
+  <div class="preview-wrap">
+    <header class="store-topbar">
+      <div class="store-brand">
+        <img src="/admin-icon.jpeg" alt="logo">
+        <div>
+          <span class="brand-kicker">Maige Casa</span>
+          <h1>Auto Parts Premium</h1>
+        </div>
+      </div>
+      <nav class="store-nav">
+        <button class="ghost-button">Catalogue</button>
+        <button class="ghost-button">Produits</button>
+        <button class="ghost-button">Commandes</button>
+      </nav>
+      <div class="topbar-actions">
+        <button class="ghost-button">Theme</button>
+        <div class="user-box glass-panel">Admin <small>Manager</small></div>
+        <button class="ghost-button cart-counter-button">Cart 3</button>
+      </div>
+    </header>
+
+    <section class="store-hero">
+      <article class="hero-copy glass-panel">
+        <span class="hero-kicker">Futuristic automotive</span>
+        <h2>Enterprise inventory, reimagined as a premium SaaS dashboard</h2>
+        <p>Luxury spacing, glassmorphism cards, neon accents and cinematic transitions.</p>
+        <div class="hero-actions">
+          <button>Explorer le catalogue</button>
+        </div>
+      </article>
+
+      <aside class="glass-panel">
+        <div style="margin-bottom:12px"><strong>Highlights</strong></div>
+        <div class="store-insights">
+          <article class="glass-panel">
+            <div><svg class="store-icon" viewBox="0 0 24 24"><path d="M12 3L20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3z"></path></svg></div>
+            <div><span>Produits</span><strong>1,248</strong></div>
+          </article>
+          <article class="glass-panel insight-warning">
+            <div><svg class="store-icon" viewBox="0 0 24 24"><path d="M12 3L20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3z"></path></svg></div>
+            <div><span>Ruptures</span><strong>32</strong></div>
+          </article>
+        </div>
+      </aside>
+    </section>
+
+    <div class="demo-row">
+      <div>
+        <div class="product-card">
+          <div class="product-visual" style="height:220px;">
+            <img src="https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1200&q=80" alt="part">
+          </div>
+          <div class="product-content">
+            <div class="product-meta"><strong>Premium Brake Pad</strong><span class="stock">En stock</span></div>
+            <p>High-performance brake pad for luxury vehicles. Metallic finish and long life.</p>
+            <div><button>Add to cart</button></div>
+          </div>
+        </div>
+        <p class="preview-note">This static preview uses the new ui-theme.css. Open the file in a browser to inspect light/dark by toggling body[data-store-theme].</p>
+      </div>
+
+      <div class="glass-panel">
+        <strong>Footer Preview</strong>
+        <div style="margin-top:12px">Maige Casa — Contact: hello@maigecasa.example</div>
+        <div style="margin-top:8px;color:var(--muted)">© 2026 — Premium Automotive SaaS</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // quick keyboard: press "t" to toggle theme
+    document.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()==='t'){
+        const theme = document.body.getAttribute('data-store-theme')==='dark'?'light':'dark';
+        document.body.setAttribute('data-store-theme',theme);
+      }
+    })
+  </script>
+</body>
+</html>

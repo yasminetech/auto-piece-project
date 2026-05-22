@@ -4,17 +4,24 @@ import {
   adjustStock,
   createAdminProduct,
   createSupplier,
+  deleteProductMedia,
+  deleteReview,
   deleteAdminProduct,
   deleteSupplier,
   getDashboardStats,
+  getModerationReviews,
+  getProductDetails,
   getProducts,
   getStockMovements,
   getSuppliers,
   loginAdmin,
+  moderateReview,
+  resolveMediaUrl,
+  uploadProductMedia,
   updateAdminProduct,
   updateSupplier,
 } from './api';
-import type { DashboardStats, Product, StockMovement, Supplier, User } from './types';
+import type { DashboardStats, Product, ProductDetail, ProductReview, StockMovement, Supplier, User } from './types';
 
 type AdminPanelProps = {
   user: User | null;
@@ -23,12 +30,13 @@ type AdminPanelProps = {
   onOpenStore: () => void;
 };
 
-type AdminSection = 'dashboard' | 'products' | 'stock' | 'suppliers' | 'alerts';
+type AdminSection = 'dashboard' | 'products' | 'stock' | 'suppliers' | 'alerts' | 'reviews';
 type AdminAuthMode = 'login' | 'forgot' | 'reset';
 type ThemeMode = 'dark' | 'light';
 type SortDirection = 'asc' | 'desc';
 type SortKey = 'name' | 'category' | 'price' | 'quantity';
 type MediaKind = 'image' | 'video';
+type ReviewFilter = 'all' | 'visible' | 'hidden';
 
 type ProductForm = {
   name: string;
@@ -57,6 +65,9 @@ type MediaItem = {
   kind: MediaKind;
   url: string;
   progress: number;
+  file?: File;
+  mediaId?: string;
+  persisted?: boolean;
 };
 
 type IconName =
@@ -82,6 +93,7 @@ type IconName =
   | 'settings'
   | 'shield'
   | 'spark'
+  | 'star'
   | 'stock'
   | 'sun'
   | 'supplier'
@@ -116,6 +128,7 @@ const navItems: { id: AdminSection; label: string; icon: IconName }[] = [
   { id: 'stock', label: 'Stock', icon: 'stock' },
   { id: 'suppliers', label: 'Fournisseurs', icon: 'supplier' },
   { id: 'alerts', label: 'Alertes', icon: 'alert' },
+  { id: 'reviews', label: 'Avis', icon: 'star' },
 ];
 
 const colorOptions = ['#d94828', '#0ea5e9', '#111827', '#f8fafc', '#16a34a'];
@@ -297,6 +310,11 @@ function Icon({ name, className = '' }: { name: IconName; className?: string }) 
         <path d="m19 16 .7 2.3L22 19l-2.3.7L19 22l-.7-2.3L16 19l2.3-.7L19 16Z" />
       </>
     ),
+    star: (
+      <>
+        <path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6-5.4-2.9-5.4 2.9 1-6L3.2 9.4l6.1-.9L12 3Z" />
+      </>
+    ),
     stock: (
       <>
         <path d="M4 19h16" />
@@ -405,6 +423,12 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   const [tablePage, setTablePage] = useState(1);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [authShake, setAuthShake] = useState(false);
+  const [productDetailsMap, setProductDetailsMap] = useState<Record<string, ProductDetail>>({});
+  const [moderationReviews, setModerationReviews] = useState<(ProductReview & { productName: string })[]>([]);
+  const [selectedReviewId, setSelectedReviewId] = useState<string | null>(null);
+  const [reviewDraftComment, setReviewDraftComment] = useState('');
+  const [reviewDraftRating, setReviewDraftRating] = useState('5');
+  const [reviewFilter, setReviewFilter] = useState<ReviewFilter>('all');
   const productFormCardRef = useRef<HTMLElement | null>(null);
   const supplierFormCardRef = useRef<HTMLElement | null>(null);
 
@@ -465,6 +489,10 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   }, [allProducts]);
 
   const selectedProduct = selectedProductId ? productById.get(selectedProductId) : allProducts[0];
+  const selectedProductDetail = selectedProductId ? productDetailsMap[selectedProductId] : undefined;
+  const selectedReview = selectedReviewId
+    ? moderationReviews.find((review) => review.id === selectedReviewId) ?? null
+    : moderationReviews[0] ?? null;
 
   const filteredProducts = useMemo(() => {
     const query = headerSearch.trim().toLowerCase();
@@ -497,6 +525,21 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     dashboard?.recentMovements && dashboard.recentMovements.length > 0
       ? dashboard.recentMovements
       : movementHistory.slice(0, 5);
+
+  const filteredModerationReviews = useMemo(() => {
+    const query = headerSearch.trim().toLowerCase();
+
+    return moderationReviews.filter((review) => {
+      if (reviewFilter === 'visible' && !review.isVisible) return false;
+      if (reviewFilter === 'hidden' && review.isVisible) return false;
+
+      if (!query) return true;
+      return [review.productName, review.username, review.comment]
+        .join(' ')
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [headerSearch, moderationReviews, reviewFilter]);
 
   useEffect(() => {
     localStorage.setItem('auto-piece-admin-theme', theme);
@@ -546,6 +589,29 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     );
   }, [allProducts]);
 
+  useEffect(() => {
+    if (!token || !selectedProductId) return;
+    void loadProductDetailForAdmin(selectedProductId);
+  }, [selectedProductId, token]);
+
+  useEffect(() => {
+    if (moderationReviews.length === 0) {
+      setSelectedReviewId(null);
+      setReviewDraftComment('');
+      setReviewDraftRating('5');
+      return;
+    }
+
+    if (selectedReviewId && moderationReviews.some((review) => review.id === selectedReviewId)) {
+      return;
+    }
+
+    const firstReview = moderationReviews[0];
+    setSelectedReviewId(firstReview.id);
+    setReviewDraftComment(firstReview.comment);
+    setReviewDraftRating(String(firstReview.rating));
+  }, [moderationReviews, selectedReviewId]);
+
   async function loadAdminData() {
     if (!token) return;
 
@@ -553,17 +619,19 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     setError('');
 
     try {
-      const [productData, supplierData, movementData, dashboardData] = await Promise.all([
+      const [productData, supplierData, movementData, dashboardData, reviewData] = await Promise.all([
         getProducts(),
         getSuppliers(token),
         getStockMovements(token),
         getDashboardStats(token),
+        getModerationReviews(token).catch(() => []),
       ]);
 
       setAllProducts(productData);
       setSuppliers(supplierData);
       setMovements(movementData);
       setDashboard(dashboardData);
+      setModerationReviews(reviewData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Impossible de charger les donnees admin');
     } finally {
@@ -583,6 +651,58 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   async function refreshAdmin() {
     await loadAdminData();
     await loadProducts();
+    if (selectedProductId) {
+      await loadProductDetailForAdmin(selectedProductId);
+    }
+  }
+
+  async function loadProductDetailForAdmin(productId: string, syncMedia = false) {
+    if (!productId) return;
+
+    try {
+      const detail = await getProductDetails(productId);
+      setProductDetailsMap((current) => ({ ...current, [productId]: detail }));
+
+      if (syncMedia) {
+        setMediaItems((current) => {
+          current.forEach((item) => {
+            if (!item.persisted) {
+              URL.revokeObjectURL(item.url);
+            }
+          });
+
+          return detail.media.map((media) => ({
+            id: `persisted-${media.id}`,
+            mediaId: media.id,
+            name: media.altText || `${media.kind} ${media.id}`,
+            kind: media.kind,
+            url: media.url,
+            progress: 100,
+            persisted: true,
+          }));
+        });
+      }
+    } catch (err) {
+      const fallbackProduct = allProducts.find((product) => product.id === productId);
+      if (!fallbackProduct) {
+        setError(err instanceof Error ? err.message : 'Impossible de charger les medias produit');
+        return;
+      }
+
+      const fallbackDetail: ProductDetail = {
+        ...fallbackProduct,
+        media: [],
+        reviews: [],
+        similarProducts: allProducts
+          .filter((product) => product.id !== productId && product.category === fallbackProduct.category)
+          .slice(0, 4),
+      };
+
+      setProductDetailsMap((current) => ({ ...current, [productId]: fallbackDetail }));
+      if (syncMedia) {
+        clearMediaItems();
+      }
+    }
   }
 
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
@@ -635,7 +755,11 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   }
 
   function clearMediaItems() {
-    mediaItems.forEach((item) => URL.revokeObjectURL(item.url));
+    mediaItems.forEach((item) => {
+      if (!item.persisted) {
+        URL.revokeObjectURL(item.url);
+      }
+    });
     setMediaItems([]);
   }
 
@@ -696,12 +820,21 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     setNotice('');
 
     try {
+      let savedProduct: Product;
       if (editingProductId) {
-        await updateAdminProduct(token, editingProductId, payload);
+        savedProduct = await updateAdminProduct(token, editingProductId, payload);
         setNotice('Produit modifie avec succes.');
       } else {
-        await createAdminProduct(token, payload);
+        savedProduct = await createAdminProduct(token, payload);
         setNotice('Produit ajoute avec succes.');
+      }
+
+      const filesToUpload = mediaItems
+        .filter((item) => item.file)
+        .map((item) => item.file as File);
+
+      if (filesToUpload.length > 0) {
+        await uploadProductMedia(token, savedProduct.id, filesToUpload);
       }
 
       setFormSuccessTick((n) => n + 1);
@@ -710,6 +843,8 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       }
       resetProductForm();
       await refreshAdmin();
+      setSelectedProductId(savedProduct.id);
+      await loadProductDetailForAdmin(savedProduct.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Enregistrement produit impossible');
       setFormErrorTick((n) => n + 1);
@@ -730,6 +865,22 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       supplierId: product.supplierId ?? '',
       category: product.category,
     });
+    clearMediaItems();
+    const cachedDetail = productDetailsMap[product.id];
+    if (cachedDetail) {
+      setMediaItems(cachedDetail.media.map((media) => ({
+        id: `persisted-${media.id}`,
+        mediaId: media.id,
+        name: media.altText || `${media.kind} ${media.id}`,
+        kind: media.kind,
+        url: media.url,
+        progress: 100,
+        persisted: true,
+      })));
+    } else {
+      clearMediaItems();
+      void loadProductDetailForAdmin(product.id, true);
+    }
     scrollCardIntoView(productFormCardRef.current);
   }
 
@@ -936,6 +1087,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
         kind: file.type.startsWith('video/') ? 'video' : 'image',
         url: URL.createObjectURL(file),
         progress: 12,
+        file,
       };
 
       window.setTimeout(() => {
@@ -955,10 +1107,35 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     setMediaItems((current) => [...current, ...nextItems].slice(0, 8));
   }
 
-  function removeMedia(id: string) {
+  async function removeMedia(id: string) {
+    const target = mediaItems.find((item) => item.id === id);
+    if (!target) return;
+
+    if (target.persisted && target.mediaId && token) {
+      setLoading(true);
+      setError('');
+
+      try {
+        await deleteProductMedia(token, target.mediaId);
+        setNotice('Media retire avec succes.');
+        setMediaItems((current) => current.filter((item) => item.id !== id));
+        if (selectedProductId) {
+          await loadProductDetailForAdmin(selectedProductId, editingProductId === selectedProductId);
+        }
+        await loadProducts();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Suppression media impossible');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     setMediaItems((current) => {
       const found = current.find((item) => item.id === id);
-      if (found) URL.revokeObjectURL(found.url);
+      if (found && !found.persisted) {
+        URL.revokeObjectURL(found.url);
+      }
       return current.filter((item) => item.id !== id);
     });
   }
@@ -973,6 +1150,93 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     setSelectedColors((current) =>
       current.includes(color) ? current.filter((item) => item !== color) : [...current, color],
     );
+  }
+
+  function selectReviewCard(review: ProductReview & { productName: string }) {
+    setSelectedReviewId(review.id);
+    setReviewDraftComment(review.comment);
+    setReviewDraftRating(String(review.rating));
+  }
+
+  async function saveReviewChanges() {
+    if (!token || !selectedReview) return;
+
+    const rating = Number(reviewDraftRating);
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      setError('La note doit etre comprise entre 1 et 5.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const updated = await moderateReview(token, selectedReview.id, {
+        rating,
+        comment: reviewDraftComment.trim(),
+        isVisible: selectedReview.isVisible,
+      });
+
+      setModerationReviews((current) =>
+        current.map((review) => (review.id === updated.id ? updated : review)),
+      );
+      setNotice('Avis mis a jour.');
+      await Promise.all([loadProducts(), loadProductDetailForAdmin(updated.productId)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Edition avis impossible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function toggleReviewVisibility(review: ProductReview & { productName: string }) {
+    if (!token) return;
+
+    setLoading(true);
+    setError('');
+    setNotice('');
+
+    try {
+      const updated = await moderateReview(token, review.id, {
+        rating: review.rating,
+        comment: review.comment,
+        isVisible: !review.isVisible,
+      });
+
+      setModerationReviews((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      if (selectedReviewId === updated.id) {
+        setReviewDraftComment(updated.comment);
+        setReviewDraftRating(String(updated.rating));
+      }
+      setNotice(updated.isVisible ? 'Avis publie.' : 'Avis masque.');
+      await Promise.all([loadProducts(), loadProductDetailForAdmin(updated.productId)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Moderation avis impossible');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDeleteReviewCard(review: ProductReview & { productName: string }) {
+    if (!token || !window.confirm(`Supprimer l'avis de ${review.username} ?`)) return;
+
+    setLoading(true);
+    setError('');
+    setNotice('');
+
+    try {
+      await deleteReview(token, review.id);
+      setModerationReviews((current) => current.filter((item) => item.id !== review.id));
+      setNotice('Avis supprime.');
+      await Promise.all([loadProducts(), loadProductDetailForAdmin(review.productId)]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Suppression avis impossible');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function renderToast() {
@@ -1366,7 +1630,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
         </div>
 
         <div className="dashboard-grid">
-          <section className="premium-card" ref={supplierFormCardRef}>
+          <section className="premium-card">
             <div className="section-title">
               <div>
                 <span className="section-kicker">Timeline</span>
@@ -1415,6 +1679,10 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
                 <Icon name="alert" />
                 Alertes
               </button>
+              <button type="button" onClick={() => chooseSection('reviews')}>
+                <Icon name="star" />
+                Moderer avis
+              </button>
             </div>
           </section>
 
@@ -1447,6 +1715,20 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   }
 
   function renderProducts() {
+    const previewMediaItems =
+      mediaItems.length > 0
+        ? mediaItems
+        : (selectedProductDetail?.media.map((media) => ({
+            id: `preview-${media.id}`,
+            mediaId: media.id,
+            name: media.altText || `${media.kind} ${media.id}`,
+            kind: media.kind,
+            url: media.url,
+            progress: 100,
+            persisted: true,
+          })) ?? []);
+    const previewPrimary = previewMediaItems[0];
+
     return (
       <section className="admin-page-section fade-page">
         <section className="premium-card product-command-bar" aria-label="Recherche produits admin">
@@ -1612,9 +1894,9 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
               <span className={`status-badge status-${productStatusValue}`}>{productStatusValue}</span>
             </div>
             <div className="preview-media">
-              {mediaItems[0]?.kind === 'image' && <img src={mediaItems[0].url} alt={mediaItems[0].name} />}
-              {mediaItems[0]?.kind === 'video' && <video src={mediaItems[0].url} muted controls />}
-              {!mediaItems[0] && (
+              {previewPrimary?.kind === 'image' && <img src={resolveMediaUrl(previewPrimary.url)} alt={previewPrimary.name} />}
+              {previewPrimary?.kind === 'video' && <video src={resolveMediaUrl(previewPrimary.url)} muted controls />}
+              {!previewPrimary && (
                 <div className="preview-placeholder">
                   <Icon name="image" />
                 </div>
@@ -1635,13 +1917,13 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
               </div>
             </div>
             <div className="thumbnail-gallery">
-              {mediaItems.map((item) => (
+              {previewMediaItems.map((item) => (
                 <article key={item.id}>
-                  {item.kind === 'image' ? <img src={item.url} alt={item.name} /> : <Icon name="video" />}
+                  {item.kind === 'image' ? <img src={resolveMediaUrl(item.url)} alt={item.name} /> : <Icon name="video" />}
                   <div>
                     <span style={{ width: `${item.progress}%` }} />
                   </div>
-                  <button type="button" onClick={() => removeMedia(item.id)} aria-label={`Retirer ${item.name}`}>
+                  <button type="button" onClick={() => void removeMedia(item.id)} aria-label={`Retirer ${item.name}`}>
                     <Icon name="close" />
                   </button>
                 </article>
@@ -1888,7 +2170,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     return (
       <section className="admin-page-section fade-page">
         <div className="dashboard-grid">
-          <section className="premium-card">
+          <section className="premium-card" ref={supplierFormCardRef}>
             <div className="section-title">
               <div>
                 <span className="section-kicker">Supply network</span>
@@ -2078,11 +2360,175 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
     );
   }
 
+  function renderReviews() {
+    const visibleCount = moderationReviews.filter((review) => review.isVisible).length;
+    const hiddenCount = moderationReviews.length - visibleCount;
+    const averageRating =
+      moderationReviews.length === 0
+        ? 0
+        : moderationReviews.reduce((total, review) => total + review.rating, 0) / moderationReviews.length;
+
+    return (
+      <section className="admin-page-section fade-page">
+        <div className="premium-stat-grid alert-stat-grid">
+          <article className="premium-card stat-card accent-blue">
+            <div className="stat-icon"><Icon name="star" /></div>
+            <span>Visible</span>
+            <strong>{visibleCount}</strong>
+            <small>Avis publies</small>
+          </article>
+          <article className="premium-card stat-card accent-warning">
+            <div className="stat-icon"><Icon name="eyeOff" /></div>
+            <span>Masque</span>
+            <strong>{hiddenCount}</strong>
+            <small>En attente moderation</small>
+          </article>
+          <article className="premium-card stat-card accent-red">
+            <div className="stat-icon"><Icon name="chart" /></div>
+            <span>Note moyenne</span>
+            <strong>{averageRating ? averageRating.toFixed(1) : '0.0'}</strong>
+            <small>Sur l ensemble des avis</small>
+          </article>
+        </div>
+
+        <section className="premium-card review-control-bar">
+          <div className="section-title">
+            <div>
+              <span className="section-kicker">Review control</span>
+              <h2>Filtres moderation</h2>
+            </div>
+            <span>{filteredModerationReviews.length} avis</span>
+          </div>
+          <div className="review-filter-row">
+            <button
+              type="button"
+              className={`ghost-admin-button compact-button ${reviewFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setReviewFilter('all')}
+            >
+              Tous
+            </button>
+            <button
+              type="button"
+              className={`ghost-admin-button compact-button ${reviewFilter === 'visible' ? 'active' : ''}`}
+              onClick={() => setReviewFilter('visible')}
+            >
+              Visibles
+            </button>
+            <button
+              type="button"
+              className={`ghost-admin-button compact-button ${reviewFilter === 'hidden' ? 'active' : ''}`}
+              onClick={() => setReviewFilter('hidden')}
+            >
+              Masques
+            </button>
+          </div>
+        </section>
+
+        <div className="review-moderation-grid">
+          <section className="premium-card">
+            <div className="section-title">
+              <div>
+                <span className="section-kicker">Incoming feedback</span>
+                <h2>Flux avis</h2>
+              </div>
+            </div>
+            <div className="review-admin-list">
+              {filteredModerationReviews.map((review) => (
+                <article
+                  key={review.id}
+                  className={`review-admin-card ${selectedReviewId === review.id ? 'active' : ''}`}
+                >
+                  <button type="button" className="review-card-select" onClick={() => selectReviewCard(review)}>
+                    <div className="review-admin-head">
+                      <div>
+                        <strong>{review.productName}</strong>
+                        <span>{review.username}</span>
+                      </div>
+                      <span className={review.isVisible ? 'low-badge' : 'critical-badge'}>
+                        {review.isVisible ? 'Visible' : 'Masque'}
+                      </span>
+                    </div>
+                    <div className="review-admin-stars">
+                      {Array.from({ length: 5 }, (_, index) => (
+                        <span key={index} className={index < review.rating ? 'active' : ''}>
+                          <Icon name="star" />
+                        </span>
+                      ))}
+                    </div>
+                    <p>{review.comment || 'Aucun commentaire saisi.'}</p>
+                  </button>
+                  <div className="review-admin-actions">
+                    <button className="ghost-admin-button compact-button" type="button" onClick={() => void toggleReviewVisibility(review)}>
+                      {review.isVisible ? 'Masquer' : 'Publier'}
+                    </button>
+                    <button className="ghost-admin-button compact-button danger" type="button" onClick={() => void handleDeleteReviewCard(review)}>
+                      Supprimer
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {filteredModerationReviews.length === 0 && <p className="empty-state">Aucun avis pour ce filtre.</p>}
+            </div>
+          </section>
+
+          <section className="premium-card">
+            <div className="section-title">
+              <div>
+                <span className="section-kicker">Review editor</span>
+                <h2>Edition moderation</h2>
+              </div>
+            </div>
+            {selectedReview ? (
+              <form className="premium-form review-editor-form" onSubmit={(event) => {
+                event.preventDefault();
+                void saveReviewChanges();
+              }}>
+                <label>
+                  Produit
+                  <input value={selectedReview.productName} readOnly />
+                </label>
+                <label>
+                  Auteur
+                  <input value={selectedReview.username} readOnly />
+                </label>
+                <label>
+                  Note
+                  <select value={reviewDraftRating} onChange={(event) => setReviewDraftRating(event.target.value)}>
+                    {[1, 2, 3, 4, 5].map((rating) => (
+                      <option key={rating} value={rating}>
+                        {rating} / 5
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Commentaire
+                  <textarea
+                    rows={6}
+                    value={reviewDraftComment}
+                    onChange={(event) => setReviewDraftComment(event.target.value)}
+                  />
+                </label>
+                <button className="primary-admin-button" type="submit" disabled={loading}>
+                  <Icon name="edit" />
+                  Enregistrer avis
+                </button>
+              </form>
+            ) : (
+              <p className="empty-state">Selectionnez un avis pour l editer.</p>
+            )}
+          </section>
+        </div>
+      </section>
+    );
+  }
+
   function renderSection() {
     if (section === 'products') return renderProducts();
     if (section === 'stock') return renderStock();
     if (section === 'suppliers') return renderSuppliers();
     if (section === 'alerts') return renderAlerts();
+    if (section === 'reviews') return renderReviews();
     return renderDashboard();
   }
 

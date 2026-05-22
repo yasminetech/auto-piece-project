@@ -1,0 +1,123 @@
+/* ui-theme.css - Premium cinematic overrides & motion system */
+
+/* Note: Scroll reveal animations are now defined in styles.css for consistency and performance optimization */
+
+/* Hero text cinematic reveal */
+.hero-cinematic-title {
+  animation: heroTextReveal 1s cubic-bezier(.2,.9,.3,1) 0.2s both;
+}
+
+.hero-cinematic-subtitle {
+  animation: heroTextReveal 1s cubic-bezier(.2,.9,.3,1) 0.5s both;
+}
+
+.hero-cinematic-actions {
+  animation: cinematicReveal 0.8s cubic-bezier(.2,.9,.3,1) 0.7s both;
+}
+
+/* Neon text glow effect */
+.neon-text-glow {
+  animation: neonGlow 3s ease-in-out infinite;
+}
+
+/* Floating animation for decorative elements */
+.float-element {
+  animation: floatMotion 6s ease-in-out infinite;
+}
+
+.float-element-delayed {
+  animation: floatMotion 6s ease-in-out 2s infinite;
+}
+
+/* Card entrance animation */
+.card-entrance {
+  animation: cardRise 0.6s cubic-bezier(.2,.9,.3,1) both;
+}
+
+.card-entrance-delay-1 { animation-delay: 0.1s; }
+.card-entrance-delay-2 { animation-delay: 0.2s; }
+.card-entrance-delay-3 { animation-delay: 0.3s; }
+
+/* Premium hover glow effect */
+.hover-glow {
+  transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.hover-glow:hover {
+  box-shadow: 0 0 30px rgba(76,201,240,0.2), 0 0 60px rgba(76,201,240,0.08);
+  border-color: rgba(76,201,240,0.4);
+  transform: translateY(-3px);
+}
+
+/* Neon border animation */
+.neon-border {
+  animation: borderGlow 3s ease-in-out infinite;
+}
+
+/* Gradient animated background */
+.gradient-animated {
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+/* Morphing decorative blob */
+.morph-blob {
+  animation: morphBg 8s ease-in-out infinite;
+}
+
+/* Skeleton loading */
+.skeleton {
+  background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.skeleton::after {
+  content: "";
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.04), transparent);
+  animation: shimmer 1.6s linear infinite;
+}
+
+/* Page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(8px) scale(0.995);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity 0.48s cubic-bezier(.2,.9,.3,1), transform 0.48s cubic-bezier(.2,.9,.3,1);
+}
+
+.page-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-exit-active {
+  opacity: 0;
+  transform: translateY(-10px);
+  transition: opacity 0.36s cubic-bezier(.2,.9,.3,1), transform 0.36s cubic-bezier(.2,.9,.3,1);
+}
+
+/* Utility helpers */
+.hidden { display: none !important; }
+.center { display: flex; align-items: center; justify-content: center; }
+
+/* Premium scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(239,35,60,0.6), rgba(76,201,240,0.6));
+}
+
+/* Selection color */
+::selection {
+  background: rgba(76,201,240,0.25);
+  color: inherit;
+}
+
