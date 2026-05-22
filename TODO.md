@@ -9,9 +9,12 @@
 
 
 
-## Step 3 (next)
-- Apply **error shake** to forms/inputs by toggling CSS classes when validation fails.
+## Step 3 (done)
+- Applied **error shake** and invalid-field highlight to admin forms on validation failures.
 
-## Step 4 (next)
-- Improve table pagination/search micro-interactions (CSS-only first; JS state if needed).
+## Step 4 (done)
+- Improved table pagination/search micro-interactions and row action feedback.
+
+## Step 5 (done)
+- Reworked products/suppliers row edit UX with direct `Modifier` actions, tooltip feedback, success pulse, and smoother table scrolling with sticky headers.
 

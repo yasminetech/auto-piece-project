@@ -1,5 +1,5 @@
-import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import type { MouseEvent, ReactNode } from 'react';
 import {
   adjustStock,
   createAdminProduct,
@@ -67,6 +67,7 @@ type IconName =
   | 'chevron'
   | 'close'
   | 'dashboard'
+  | 'edit'
   | 'eye'
   | 'eyeOff'
   | 'filter'
@@ -86,7 +87,8 @@ type IconName =
   | 'supplier'
   | 'upload'
   | 'user'
-  | 'video';
+  | 'video'
+  | 'check';
 
 const LOW_STOCK_LIMIT = 5;
 const PAGE_SIZE = 5;
@@ -200,6 +202,12 @@ function Icon({ name, className = '' }: { name: IconName; className?: string }) 
         <path d="M4 13h7V4H4v9Z" />
         <path d="M13 20h7V4h-7v16Z" />
         <path d="M4 20h7v-5H4v5Z" />
+      </>
+    ),
+    edit: (
+      <>
+        <path d="m3 17.3 8.5-8.6 3.8 3.8-8.6 8.5L3 21l.1-3.7Z" />
+        <path d="m14.5 5.7 1.1-1.1a2.2 2.2 0 1 1 3.1 3.1l-1.1 1.1" />
       </>
     ),
     eye: (
@@ -337,6 +345,11 @@ function Icon({ name, className = '' }: { name: IconName; className?: string }) 
         <path d="m16 10 5-3v10l-5-3" />
       </>
     ),
+    check: (
+      <>
+        <path d="m5 12 4.4 4.4L19 7.4" />
+      </>
+    ),
   };
 
   return <svg {...common}>{paths[name]}</svg>;
@@ -383,8 +396,8 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
-  const [activeActionId, setActiveActionId] = useState('');
   const [rowActionLoadingId, setRowActionLoadingId] = useState<string | null>(null);
+  const [rowActionSuccessId, setRowActionSuccessId] = useState<string | null>(null);
   const [formSuccessTick, setFormSuccessTick] = useState(0);
   const [formErrorTick, setFormErrorTick] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>('name');
@@ -392,6 +405,8 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   const [tablePage, setTablePage] = useState(1);
   const [currentTime, setCurrentTime] = useState(() => new Date());
   const [authShake, setAuthShake] = useState(false);
+  const productFormCardRef = useRef<HTMLElement | null>(null);
+  const supplierFormCardRef = useRef<HTMLElement | null>(null);
 
   const isAdmin = user?.role === 'admin';
   const token = user?.accessToken ?? '';
@@ -667,6 +682,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   async function handleProductSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
+    const editedProductId = editingProductId;
 
     const payload = getProductPayload();
     if (!payload) {
@@ -689,6 +705,9 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       }
 
       setFormSuccessTick((n) => n + 1);
+      if (editedProductId) {
+        markRowSuccess(editedProductId);
+      }
       resetProductForm();
       await refreshAdmin();
     } catch (err) {
@@ -711,6 +730,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       supplierId: product.supplierId ?? '',
       category: product.category,
     });
+    scrollCardIntoView(productFormCardRef.current);
   }
 
   async function handleDeleteProduct(product: Product) {
@@ -734,6 +754,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   async function handleSupplierSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) return;
+    const editedSupplierId = editingSupplierId;
 
     const payload = {
       name: supplierForm.name.trim(),
@@ -760,6 +781,9 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       }
 
       setFormSuccessTick((n) => n + 1);
+      if (editedSupplierId) {
+        markRowSuccess(editedSupplierId);
+      }
       resetSupplierForm();
       await loadAdminData();
     } catch (err) {
@@ -776,6 +800,25 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
       name: supplier.name,
       contact: supplier.contact,
     });
+    scrollCardIntoView(supplierFormCardRef.current);
+  }
+
+  function handleEditProductRow(event: MouseEvent<HTMLButtonElement>, product: Product) {
+    applyButtonRipple(event.currentTarget, event);
+    setRowActionLoadingId(product.id);
+    startEditProduct(product);
+    window.setTimeout(() => {
+      setRowActionLoadingId((current) => (current === product.id ? null : current));
+    }, 520);
+  }
+
+  function handleEditSupplierRow(event: MouseEvent<HTMLButtonElement>, supplier: Supplier) {
+    applyButtonRipple(event.currentTarget, event);
+    setRowActionLoadingId(supplier.id);
+    startEditSupplier(supplier);
+    window.setTimeout(() => {
+      setRowActionLoadingId((current) => (current === supplier.id ? null : current));
+    }, 520);
   }
 
   async function handleDeleteSupplier(supplier: Supplier) {
@@ -836,7 +879,25 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
   function chooseSection(item: AdminSection) {
     setSection(item);
     setSidebarOpen(false);
-    setActiveActionId('');
+  }
+
+  function applyButtonRipple(button: HTMLButtonElement, event: MouseEvent<HTMLButtonElement>) {
+    const rect = button.getBoundingClientRect();
+    button.style.setProperty('--ripple-x', `${event.clientX - rect.left}px`);
+    button.style.setProperty('--ripple-y', `${event.clientY - rect.top}px`);
+  }
+
+  function scrollCardIntoView(target: HTMLElement | null) {
+    window.requestAnimationFrame(() => {
+      target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
+
+  function markRowSuccess(id: string) {
+    setRowActionSuccessId(id);
+    window.setTimeout(() => {
+      setRowActionSuccessId((current) => (current === id ? null : current));
+    }, 1600);
   }
 
   function toggleTheme() {
@@ -1305,7 +1366,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
         </div>
 
         <div className="dashboard-grid">
-          <section className="premium-card">
+          <section className="premium-card" ref={supplierFormCardRef}>
             <div className="section-title">
               <div>
                 <span className="section-kicker">Timeline</span>
@@ -1414,7 +1475,7 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
         </section>
 
         <div className="product-studio-grid">
-          <section className="premium-card product-form-card">
+          <section className="premium-card product-form-card" ref={productFormCardRef}>
             <div className="section-title">
               <div>
                 <span className="section-kicker">Product studio</span>
@@ -1637,47 +1698,43 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
                     </td>
                     <td>{supplierName(product)}</td>
                     <td>
-                      <div className="action-dropdown-host">
+                      <div className="table-actions premium-table-actions">
                         <button
-                          className="ghost-admin-button icon-only"
+                          className="ghost-admin-button compact-button icon-only"
                           type="button"
-                          aria-expanded={activeActionId === product.id}
-                          onClick={() => setActiveActionId((current) => (current === product.id ? '' : product.id))}
+                          aria-label={`Voir ${product.name}`}
+                          data-tooltip="Voir details"
+                          onClick={() => setSelectedProductId(product.id)}
                         >
-                          <Icon name="more" />
+                          <Icon name="eye" />
                         </button>
-                        {activeActionId === product.id && (
-                          <div className="row-action-menu">
-                            <button type="button" onClick={() => setSelectedProductId(product.id)}>
-                              Details
-                            </button>
-                            <button
-                              type="button"
-                              title="Modifier"
-                              data-action="edit"
-                              onClick={(e) => {
-                                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                                (e.currentTarget as HTMLButtonElement).style.setProperty(
-                                  '--ripple-x',
-                                  `${e.clientX - rect.left}px`,
-                                );
-                                (e.currentTarget as HTMLButtonElement).style.setProperty(
-                                  '--ripple-y',
-                                  `${e.clientY - rect.top}px`,
-                                );
-                                setRowActionLoadingId(product.id);
-                                startEditProduct(product);
-                                setTimeout(() => setRowActionLoadingId(null), 900);
-                              }}
-                              disabled={loading && rowActionLoadingId === product.id}
-                            >
-                              {rowActionLoadingId === product.id ? <span className="button-loader" /> : 'Modifier'}
-                            </button>
-                            <button className="danger" type="button" onClick={() => void handleDeleteProduct(product)}>
-                              Supprimer
-                            </button>
-                          </div>
-                        )}
+                        <button
+                          className={`ghost-admin-button compact-button action-edit-button ${rowActionSuccessId === product.id ? 'is-success' : ''}`}
+                          type="button"
+                          title="Modifier"
+                          data-action="edit"
+                          data-tooltip={rowActionSuccessId === product.id ? 'Produit selectionne' : 'Modifier ce produit'}
+                          onClick={(event) => handleEditProductRow(event, product)}
+                          disabled={loading && rowActionLoadingId === product.id}
+                        >
+                          {rowActionLoadingId === product.id ? (
+                            <span className="button-loader" />
+                          ) : (
+                            <>
+                              <Icon name={rowActionSuccessId === product.id ? 'check' : 'edit'} />
+                              <span>Modifier</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className="ghost-admin-button compact-button danger icon-only"
+                          type="button"
+                          aria-label={`Supprimer ${product.name}`}
+                          data-tooltip="Supprimer"
+                          onClick={() => void handleDeleteProduct(product)}
+                        >
+                          <Icon name="close" />
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1912,32 +1969,33 @@ export default function AdminPanel({ user, onLogin, onLogout, onOpenStore }: Adm
                     <td>{supplier.contact}</td>
                     <td>{allProducts.filter((product) => product.supplierId === supplier.id).length}</td>
                     <td>
-                      <div className="table-actions">
+                      <div className="table-actions premium-table-actions">
                         <button
-                          className="ghost-admin-button compact-button"
+                          className={`ghost-admin-button compact-button action-edit-button ${rowActionSuccessId === supplier.id ? 'is-success' : ''}`}
                           type="button"
                           title="Modifier"
                           data-action="edit"
-                          onClick={(e) => {
-                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
-                            (e.currentTarget as HTMLButtonElement).style.setProperty(
-                              '--ripple-x',
-                              `${e.clientX - rect.left}px`,
-                            );
-                            (e.currentTarget as HTMLButtonElement).style.setProperty(
-                              '--ripple-y',
-                              `${e.clientY - rect.top}px`,
-                            );
-                            setRowActionLoadingId(supplier.id);
-                            startEditSupplier(supplier);
-                            setTimeout(() => setRowActionLoadingId(null), 900);
-                          }}
+                          data-tooltip={rowActionSuccessId === supplier.id ? 'Fournisseur selectionne' : 'Modifier ce fournisseur'}
+                          onClick={(event) => handleEditSupplierRow(event, supplier)}
                           disabled={loading && rowActionLoadingId === supplier.id}
                         >
-                          {rowActionLoadingId === supplier.id ? <span className="button-loader" /> : 'Modifier'}
+                          {rowActionLoadingId === supplier.id ? (
+                            <span className="button-loader" />
+                          ) : (
+                            <>
+                              <Icon name={rowActionSuccessId === supplier.id ? 'check' : 'edit'} />
+                              <span>Modifier</span>
+                            </>
+                          )}
                         </button>
-                        <button className="ghost-admin-button compact-button danger" type="button" onClick={() => void handleDeleteSupplier(supplier)}>
-                          Supprimer
+                        <button
+                          className="ghost-admin-button compact-button danger icon-only"
+                          type="button"
+                          aria-label={`Supprimer ${supplier.name}`}
+                          data-tooltip="Supprimer"
+                          onClick={() => void handleDeleteSupplier(supplier)}
+                        >
+                          <Icon name="close" />
                         </button>
                       </div>
                     </td>
