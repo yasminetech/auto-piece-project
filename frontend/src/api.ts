@@ -32,17 +32,17 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return payload as T;
 }
 
-export function login(username: string, password: string) {
+export function login(email: string, password: string) {
   return request<User>('/auth/login', {
     method: 'POST',
-    body: { username, password },
+    body: { email, password },
   });
 }
 
-export function register(username: string, password: string) {
+export function register(username: string, password: string, email: string, phone: string) {
   return request<{ message: string }>('/auth/register', {
     method: 'POST',
-    body: { username, password, role: 'user' },
+    body: { username, password, email, phone },
   });
 }
 
@@ -65,6 +65,23 @@ export function createOrder(token: string, items: { productId: string; quantity:
 
 export function getOrders(token: string) {
   return request<Order[]>('/orders', { token });
+}
+
+export function getAllOrders(token: string) {
+  return request<(Order & { username: string })[]>('/orders/all', { token });
+}
+
+export function getStats(token: string) {
+  return request<{
+    totalProducts: number;
+    outOfStock: number;
+    totalOrders: number;
+    recentMovements: any[];
+  }>('/dashboard/stats', { token });
+}
+
+export function getMovements(token: string) {
+  return request<any[]>('/stock/movements', { token });
 }
 
 export function cancelOrder(token: string, orderId: string) {
