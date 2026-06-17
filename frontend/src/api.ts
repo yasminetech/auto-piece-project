@@ -1,6 +1,25 @@
-import type { DashboardStats, Order, Product, StockMovement, Supplier, User } from './types';
+import type {
+  DashboardStats,
+  Order,
+  Product,
+  ProductDetail,
+  ProductMedia,
+  ProductReview,
+  StockMovement,
+  Supplier,
+  User,
+} from './types';
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000/api';
+const SERVER_URL = API_URL.replace(/\/api$/, '');
+
+export function resolveMediaUrl(url: string | undefined | null): string {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('/uploads/')) return `${SERVER_URL}${url}`;
+  if (url.startsWith('data:')) return url;
+  return url;
+}
 
 type RequestOptions = {
   token?: string;
@@ -9,7 +28,8 @@ type RequestOptions = {
 };
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers: HeadersInit = {
+  const isFormData = options.body instanceof FormData;
+  const headers: HeadersInit = isFormData ? {} : {
     'Content-Type': 'application/json',
   };
 
@@ -20,7 +40,11 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   const response = await fetch(`${API_URL}${path}`, {
     method: options.method ?? 'GET',
     headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
+    body: options.body
+      ? isFormData
+        ? (options.body as FormData)
+        : JSON.stringify(options.body)
+      : undefined,
   });
 
   const payload = await response.json().catch(() => null);
@@ -32,10 +56,10 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return payload as T;
 }
 
-export function login(email: string, password: string) {
+export function login(identifier: string, password: string) {
   return request<User>('/auth/login', {
     method: 'POST',
-    body: { email, password },
+    body: { username: identifier, email: identifier, password },
   });
 }
 
@@ -62,6 +86,10 @@ export function getProducts(search = '', category = '') {
   return request<Product[]>(`/products${query ? `?${query}` : ''}`);
 }
 
+export function getProductDetails(productId: string) {
+  return request<ProductDetail>(`/products/details/${productId}`);
+}
+
 export function createOrder(token: string, items: { productId: string; quantity: number }[], paymentMethod: string) {
   return request<Order>('/orders', {
     method: 'POST',
@@ -83,7 +111,9 @@ export function getStats(token: string) {
     totalProducts: number;
     outOfStock: number;
     totalOrders: number;
+    totalRevenue?: number;
     recentMovements: any[];
+    lowStockProducts?: { id: string; name: string; quantity: number }[];
   }>('/dashboard/stats', { token });
 }
 
@@ -120,6 +150,57 @@ export function updateAdminProduct(token: string, productId: string, product: Pa
 
 export function deleteAdminProduct(token: string, productId: string) {
   return request<{ message: string }>(`/products/${productId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function uploadProductMedia(token: string, productId: string, files: File[]) {
+  const body = new FormData();
+  files.forEach((file) => body.append('media', file));
+
+  return request<ProductMedia[]>(`/products/${productId}/media`, {
+    method: 'POST',
+    token,
+    body,
+  });
+}
+
+export function deleteProductMedia(token: string, mediaId: string) {
+  return request<{ message: string }>(`/products/media/${mediaId}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
+export function submitProductReview(token: string, productId: string, rating: number, comment: string) {
+  return request<ProductReview>(`/products/${productId}/reviews`, {
+    method: 'POST',
+    token,
+    body: { rating, comment },
+  });
+}
+
+export function getModerationReviews(token: string) {
+  return request<(ProductReview & { productName: string })[]>('/products/reviews/moderation/all', {
+    token,
+  });
+}
+
+export function moderateReview(
+  token: string,
+  reviewId: string,
+  review: { rating?: number; comment?: string; isVisible?: boolean },
+) {
+  return request<ProductReview & { productName: string }>(`/products/reviews/${reviewId}`, {
+    method: 'PATCH',
+    token,
+    body: review,
+  });
+}
+
+export function deleteReview(token: string, reviewId: string) {
+  return request<{ message: string }>(`/products/reviews/${reviewId}`, {
     method: 'DELETE',
     token,
   });

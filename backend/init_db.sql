@@ -33,6 +33,7 @@ CREATE TABLE products (
 CREATE TABLE orders (
     id INT AUTO_INCREMENT PRIMARY KEY,
     userId INT,
+    paymentMethod VARCHAR(80) DEFAULT 'cash',
     status VARCHAR(50) DEFAULT 'pending',
     total DECIMAL(10, 2),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -59,11 +60,42 @@ CREATE TABLE movements (
     FOREIGN KEY (productId) REFERENCES products(id)
 );
 
+CREATE TABLE product_media (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    productId INT NOT NULL,
+    kind ENUM('image', 'video') NOT NULL DEFAULT 'image',
+    url VARCHAR(500) NOT NULL,
+    altText VARCHAR(255),
+    sortOrder INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE
+);
+
+CREATE TABLE product_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    productId INT NOT NULL,
+    userId INT NOT NULL,
+    rating TINYINT NOT NULL,
+    comment TEXT,
+    isVisible TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    FOREIGN KEY (userId) REFERENCES users(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    UNIQUE KEY uniq_product_user_review (productId, userId)
+);
+
 -- Insert test data - Users (passwords are hashed with bcrypt)
 -- User: flan / password: 123456 (pre-hashed)
 INSERT INTO users (username, password, role) VALUES 
-('flan', '$2a$08$x2xqg6.1gWXLVP5tgEwgYe8jgEyEf7aXPxSLLlwWqYEWx7qvWOY6G', 'user'),
-('admin', '$2a$08$x2xqg6.1gWXLVP5tgEwgYe8jgEyEf7aXPxSLLlwWqYEWx7qvWOY6G', 'admin');
+('flan', '$2b$08$Nhkzxk/aOhOnlnzL5EnO5unhtPiIAaHmnxk.UebKIY5fi7L1/gFV2', 'user'),
+('admin', '$2b$08$Nhkzxk/aOhOnlnzL5EnO5unhtPiIAaHmnxk.UebKIY5fi7L1/gFV2', 'admin');
 
 -- Insert test suppliers
 INSERT INTO suppliers (name, contact) VALUES 
@@ -75,6 +107,11 @@ INSERT INTO products (name, description, price, quantity, supplierId, category) 
 ('Filtre a huile Bosch', 'Filtre moteur compatible citadines essence et diesel recentes.', 12.90, 24, 1, 'Filtres'),
 ('Plaquettes de frein avant', 'Jeu de plaquettes haute resistance pour freinage quotidien.', 38.50, 12, 2, 'Freinage'),
 ('Batterie 12V 60Ah', 'Batterie sans entretien avec bonne tenue au demarrage a froid.', 96.00, 8, 1, 'Electricite');
+
+INSERT INTO product_reviews (productId, userId, rating, comment, isVisible) VALUES
+(1, 1, 5, 'Montage propre, livraison rapide et tres bon rapport qualite prix.', 1),
+(2, 1, 4, 'Freinage rassurant apres installation, finition solide.', 1),
+(3, 2, 5, 'Reference fiable pour les depannages atelier et les demandes clients urgentes.', 1);
 
 -- Test query
 SELECT 'Database setup completed!' as status;

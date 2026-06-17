@@ -3,110 +3,142 @@ CREATE DATABASE autopiece_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE autopiece_db;
 
 CREATE TABLE users (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  username VARCHAR(80) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  role ENUM('admin', 'user') NOT NULL DEFAULT 'user',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE suppliers (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(160) NOT NULL,
-  contact VARCHAR(160) NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    contact VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE products (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  supplier_id INT UNSIGNED NULL,
-  name VARCHAR(160) NOT NULL,
-  description TEXT NULL,
-  price DECIMAL(10, 2) NOT NULL,
-  quantity INT UNSIGNED NOT NULL DEFAULT 0,
-  category VARCHAR(100) NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_products_supplier
-    FOREIGN KEY (supplier_id) REFERENCES suppliers(id)
-    ON UPDATE CASCADE
-    ON DELETE SET NULL,
-  INDEX idx_products_category (category),
-  INDEX idx_products_name (name)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    quantity INT NOT NULL DEFAULT 0,
+    supplierId INT,
+    category VARCHAR(100),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (supplierId) REFERENCES suppliers(id)
+        ON UPDATE CASCADE
+        ON DELETE SET NULL,
+    INDEX idx_products_category (category),
+    INDEX idx_products_name (name)
 ) ENGINE=InnoDB;
 
 CREATE TABLE orders (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  user_id INT UNSIGNED NOT NULL,
-  payment_method VARCHAR(80) NOT NULL,
-  status ENUM('pending', 'paid', 'shipped', 'delivered', 'cancelled') NOT NULL DEFAULT 'pending',
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  CONSTRAINT fk_orders_user
-    FOREIGN KEY (user_id) REFERENCES users(id)
-    ON UPDATE CASCADE
-    ON DELETE RESTRICT,
-  INDEX idx_orders_user (user_id),
-  INDEX idx_orders_status (status)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    userId INT,
+    paymentMethod VARCHAR(80) DEFAULT 'cash',
+    status VARCHAR(50) DEFAULT 'pending',
+    total DECIMAL(10, 2) DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (userId) REFERENCES users(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    INDEX idx_orders_user (userId),
+    INDEX idx_orders_status (status)
 ) ENGINE=InnoDB;
 
 CREATE TABLE order_items (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  order_id INT UNSIGNED NOT NULL,
-  product_id INT UNSIGNED NOT NULL,
-  quantity INT UNSIGNED NOT NULL,
-  unit_price DECIMAL(10, 2) NOT NULL,
-  CONSTRAINT fk_order_items_order
-    FOREIGN KEY (order_id) REFERENCES orders(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
-  CONSTRAINT fk_order_items_product
-    FOREIGN KEY (product_id) REFERENCES products(id)
-    ON UPDATE CASCADE
-    ON DELETE RESTRICT,
-  UNIQUE KEY uq_order_product (order_id, product_id)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    orderId INT,
+    productId INT,
+    quantity INT NOT NULL DEFAULT 1,
+    price DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    FOREIGN KEY (orderId) REFERENCES orders(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    INDEX idx_order_items_order (orderId),
+    INDEX idx_order_items_product (productId)
 ) ENGINE=InnoDB;
 
-CREATE TABLE stock_movements (
-  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  product_id INT UNSIGNED NOT NULL,
-  type ENUM('entry', 'exit') NOT NULL,
-  quantity INT UNSIGNED NOT NULL,
-  description VARCHAR(255) NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_stock_movements_product
-    FOREIGN KEY (product_id) REFERENCES products(id)
-    ON UPDATE CASCADE
-    ON DELETE CASCADE,
-  INDEX idx_stock_movements_product (product_id),
-  INDEX idx_stock_movements_created_at (created_at)
+CREATE TABLE movements (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    productId INT,
+    type VARCHAR(50),
+    quantity INT NOT NULL DEFAULT 0,
+    description VARCHAR(255),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    INDEX idx_movements_product (productId),
+    INDEX idx_movements_created_at (created_at)
 ) ENGINE=InnoDB;
 
--- Remplacer ces valeurs par de vrais hashes bcrypt avant de connecter l'API MySQL.
--- Exemple apres installation des dependances backend:
--- node -e "const bcrypt=require('bcryptjs'); console.log(bcrypt.hashSync('admin123',8))"
-INSERT INTO users (username, password_hash, role) VALUES
-  ('admin', 'replace_with_bcrypt_hash_for_admin123', 'admin'),
-  ('client', 'replace_with_bcrypt_hash_for_client123', 'user');
+CREATE TABLE product_media (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    productId INT NOT NULL,
+    kind ENUM('image', 'video') NOT NULL DEFAULT 'image',
+    url VARCHAR(500) NOT NULL,
+    altText VARCHAR(255),
+    sortOrder INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    INDEX idx_product_media_product (productId),
+    INDEX idx_product_media_kind (kind)
+) ENGINE=InnoDB;
+
+CREATE TABLE product_reviews (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    productId INT NOT NULL,
+    userId INT NOT NULL,
+    rating TINYINT NOT NULL,
+    comment TEXT,
+    isVisible TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (productId) REFERENCES products(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    FOREIGN KEY (userId) REFERENCES users(id)
+        ON UPDATE CASCADE
+        ON DELETE CASCADE,
+    UNIQUE KEY uniq_product_user_review (productId, userId),
+    INDEX idx_product_reviews_product_visible (productId, isVisible),
+    INDEX idx_product_reviews_user (userId)
+) ENGINE=InnoDB;
+
+-- Password for both seed accounts: 123456
+INSERT INTO users (username, password, role) VALUES
+('flan', '$2b$08$Nhkzxk/aOhOnlnzL5EnO5unhtPiIAaHmnxk.UebKIY5fi7L1/gFV2', 'user'),
+('admin', '$2b$08$Nhkzxk/aOhOnlnzL5EnO5unhtPiIAaHmnxk.UebKIY5fi7L1/gFV2', 'admin');
 
 INSERT INTO suppliers (name, contact) VALUES
-  ('Auto Distribution Europe', 'supply@ade.example'),
-  ('Garage Parts Nord', 'contact@gpn.example');
+('Auto Distribution Europe', 'supply@ade.example'),
+('Garage Parts Nord', 'contact@gpn.example'),
+('Turbo Maroc Parts', 'turbo@tmp.example');
 
-INSERT INTO products (name, description, price, quantity, supplier_id, category) VALUES
-  ('Filtre a huile Bosch', 'Filtre moteur compatible citadines essence et diesel recentes.', 12.90, 24, 1, 'Filtres'),
-  ('Plaquettes de frein avant', 'Jeu de plaquettes haute resistance pour freinage quotidien.', 38.50, 12, 2, 'Freinage'),
-  ('Batterie 12V 60Ah', 'Batterie sans entretien avec bonne tenue au demarrage a froid.', 96.00, 8, 1, 'Electricite'),
-  ('Amortisseur arriere', 'Amortisseur hydraulique pour conduite stable sur route degradee.', 72.75, 6, 2, 'Suspension'),
-  ('Bougie allumage iridium', 'Bougie longue duree pour moteur essence performant.', 9.80, 32, 1, 'Moteur'),
-  ('Courroie accessoire', 'Courroie striee resistant aux variations de temperature.', 21.40, 0, 2, 'Moteur');
+INSERT INTO products (name, description, price, quantity, supplierId, category) VALUES
+('Filtre a huile Bosch', 'Filtre moteur compatible citadines essence et diesel recentes.', 12.90, 24, 1, 'Filtres'),
+('Plaquettes de frein avant', 'Jeu de plaquettes haute resistance pour freinage quotidien.', 38.50, 12, 2, 'Freinage'),
+('Batterie 12V 60Ah', 'Batterie sans entretien avec bonne tenue au demarrage a froid.', 96.00, 8, 1, 'Electricite'),
+('Amortisseur arriere', 'Amortisseur hydraulique pour conduite stable sur route degradee.', 72.75, 6, 2, 'Suspension'),
+('Bougie allumage iridium', 'Bougie longue duree pour moteur essence performant.', 9.80, 32, 1, 'Moteur'),
+('Courroie accessoire', 'Courroie striee resistant aux variations de temperature.', 21.40, 0, 3, 'Moteur');
 
-INSERT INTO stock_movements (product_id, type, quantity, description) VALUES
-  (1, 'entry', 24, 'Stock initial'),
-  (2, 'entry', 12, 'Stock initial'),
-  (3, 'entry', 8, 'Stock initial'),
-  (4, 'entry', 6, 'Stock initial'),
-  (5, 'entry', 32, 'Stock initial'),
-  (6, 'entry', 0, 'Stock initial');
+INSERT INTO movements (productId, type, quantity, description) VALUES
+(1, 'entry', 24, 'Stock initial'),
+(2, 'entry', 12, 'Stock initial'),
+(3, 'entry', 8, 'Stock initial'),
+(4, 'entry', 6, 'Stock initial'),
+(5, 'entry', 32, 'Stock initial'),
+(6, 'entry', 0, 'Stock initial');
+
+INSERT INTO product_reviews (productId, userId, rating, comment, isVisible) VALUES
+(1, 1, 5, 'Montage propre, livraison rapide et tres bon rapport qualite prix.', 1),
+(2, 1, 4, 'Freinage rassurant apres installation, finition solide.', 1),
+(3, 2, 5, 'Reference fiable pour les depannages atelier et les demandes clients urgentes.', 1);
